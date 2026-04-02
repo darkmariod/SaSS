@@ -1,0 +1,41 @@
+php artisan l5-swagger:generate
+
+Admin:
+7|jRQiqB8ndAehNgujU63DePSFRutYKN9EFmBMtbq32eb538f3
+
+Consultor:
+8|tKYEGcv0BJkMgnZAr4m25LWEvCyA3korolJZ7XsV8c0aca5f
+
+Cliente:
+9|S4pFTVslhjIwmZeKYYnfPecnyw3NqrWlbyQmuuH5d4b282fe
+
+Cliente Anderson:
+10|Ilz1h99IdqFbeWj8fliyL3c0uCXBweyJtrgmkZnE4f9540f6
+
+A) GET /consultant/reservations
+B) GET /consultants/{id} detalle
+C) GET /consultant/calendar (propio del consultor)
+
+Cliente
+1️⃣ GET /my-reservations
+2️⃣ GET /my-payments
+3️⃣ POST /paypal/create-order
+4️⃣ POST /paypal/webhook
+5️⃣ DELETE /reservations/{id}
+6️⃣ GET /my-profile
+7️⃣ PUT /my-profile
+8️⃣ PUT /change-password
+
+
+https://unfrail-tanya-conspecific.ngrok-free.dev/api/paypal/webhook
+
+CHECKOUT.ORDER.APPROVED
+PAYMENT.CAPTURE.COMPLETED
+
+sb-456oi22303733@personal.example.com
+AP&AePp0
+
+ngrok http 8000
+
+noreply@anderson-bastidas.com
+Reservas26@
