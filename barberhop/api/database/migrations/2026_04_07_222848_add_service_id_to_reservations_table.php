@@ -6,23 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('reservations', function (Blueprint $table) {
-            //
+            $table->foreignId('service_id')->nullable()->constrained('services')->onDelete('set null');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('reservations', function (Blueprint $table) {
-            //
+            $table->dropForeign(['service_id']);
+            $table->dropColumn('service_id');
         });
     }
 };

@@ -6,20 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('schedules', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('consultant_id')->constrained('users')->onDelete('cascade');
+            $table->string('day_of_week'); // lunes, martes, etc.
+            $table->time('start_time');
+            $table->time('end_time');
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('schedules');
