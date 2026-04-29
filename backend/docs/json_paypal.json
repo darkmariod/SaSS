@@ -1,0 +1,59 @@
+{
+    "id": "3LB48071W4137093B",
+    "intent": "CAPTURE",
+    "status": "COMPLETED",
+    "purchase_units": [
+        {
+            "reference_id": "default",
+            "amount": { "currency_code": "USD", "value": "50.00" },
+            "payee": {
+                "email_address": "sb-yax3d22410815@business.example.com",
+                "merchant_id": "MWFTCD48KWR2U"
+            },
+            "shipping": {
+                "name": { "full_name": "AnderCode Paypal" },
+                "address": {
+                    "address_line_1": "Free Trade Zone",
+                    "admin_area_2": "Lima",
+                    "admin_area_1": "Lima",
+                    "postal_code": "07001",
+                    "country_code": "PE"
+                }
+            },
+            "payments": {
+                "captures": [
+                    {
+                        "id": "7H092066JV283093N",
+                        "status": "COMPLETED",
+                        "amount": { "currency_code": "USD", "value": "50.00" },
+                        "final_capture": true,
+                        "seller_protection": {
+                            "status": "ELIGIBLE",
+                            "dispute_categories": [
+                                "ITEM_NOT_RECEIVED",
+                                "UNAUTHORIZED_TRANSACTION"
+                            ]
+                        },
+                        "create_time": "2024-10-02T01:26:03Z",
+                        "update_time": "2024-10-02T01:26:03Z"
+                    }
+                ]
+            }
+        }
+    ],
+    "payer": {
+        "name": { "given_name": "AnderCode", "surname": "Paypal" },
+        "email_address": "sb-456oi22303733@personal.example.com",
+        "payer_id": "26J7GUD34S5KW",
+        "address": { "country_code": "PE" }
+    },
+    "create_time": "2024-10-02T01:25:53Z",
+    "update_time": "2024-10-02T01:26:03Z",
+    "links": [
+        {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/3LB48071W4137093B",
+            "rel": "self",
+            "method": "GET"
+        }
+    ]
+}

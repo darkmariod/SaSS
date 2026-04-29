@@ -1,0 +1,930 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Reservas API",
+        "description": "API para sistema de reservas con pagos PayPal y autenticación Sanctum",
+        "contact": {
+            "email": "soporte@tusistema.com"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1:8000/api",
+            "description": "Servidor Local"
+        }
+    ],
+    "paths": {
+        "/register": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Registro de nuevo usuario",
+                "operationId": "e66f8a7452e13b03ae4e77dbb42e435c",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nombres",
+                                    "apellidos",
+                                    "telefono",
+                                    "email",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "nombres": {
+                                        "type": "string",
+                                        "example": "Juan"
+                                    },
+                                    "apellidos": {
+                                        "type": "string",
+                                        "example": "Perez"
+                                    },
+                                    "telefono": {
+                                        "type": "string",
+                                        "example": "999999999"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "example": "juan@test.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "123456"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "example": "123456"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Usuario registrado correctamente"
+                    },
+                    "422": {
+                        "description": "Errores de validación"
+                    }
+                }
+            }
+        },
+        "/login": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Login de usuario",
+                "operationId": "d618a255475240ba3d40cc39692cd924",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "example": "juan@test.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "12345678"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login exitoso"
+                    },
+                    "401": {
+                        "description": "Credenciales incorrectas"
+                    }
+                }
+            }
+        },
+        "/logout": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Cerrar sesión",
+                "operationId": "1e357eb2c93a1bdabebcebfa088332bf",
+                "responses": {
+                    "200": {
+                        "description": "Sesión cerrada correctamente"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/my-reservations": {
+            "get": {
+                "tags": [
+                    "Cliente"
+                ],
+                "summary": "Listar reservas del cliente autenticado",
+                "operationId": "8a655c9fb4e5cb246d3d5426512f5227",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Filtrar por fecha YYYY-MM-DD",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "2024-10-23"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reservas obtenidas correctamente"
+                    },
+                    "403": {
+                        "description": "No autorizado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/my-payments": {
+            "get": {
+                "tags": [
+                    "Cliente"
+                ],
+                "summary": "Listar historial de pagos del cliente autenticado",
+                "operationId": "bd58a8ff282cbccbeababcfb7315a058",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Número de página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pagos obtenidos correctamente"
+                    },
+                    "403": {
+                        "description": "No autorizado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/my-profile": {
+            "get": {
+                "tags": [
+                    "Cliente"
+                ],
+                "summary": "Obtener perfil del usuario autenticado",
+                "operationId": "4c9dcef54964608291ca31318d8b1465",
+                "responses": {
+                    "200": {
+                        "description": "Perfil obtenido correctamente"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Cliente"
+                ],
+                "summary": "Actualizar perfil del usuario autenticado",
+                "operationId": "fb9008a9517a44a3f8673a243521dce5",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nombres",
+                                    "apellidos",
+                                    "telefono"
+                                ],
+                                "properties": {
+                                    "nombres": {
+                                        "type": "string",
+                                        "example": "Juan"
+                                    },
+                                    "apellidos": {
+                                        "type": "string",
+                                        "example": "Perez"
+                                    },
+                                    "telefono": {
+                                        "type": "string",
+                                        "example": "987654321"
+                                    },
+                                    "foto": {
+                                        "type": "string",
+                                        "example": "avatar.jpg"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Perfil actualizado correctamente"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/change-password": {
+            "put": {
+                "tags": [
+                    "Cliente"
+                ],
+                "summary": "Cambiar contraseña del usuario autenticado",
+                "operationId": "8e7f19e26fcc6d8a3f40bc27f40b4c38",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "current_password",
+                                    "new_password",
+                                    "new_password_confirmation"
+                                ],
+                                "properties": {
+                                    "current_password": {
+                                        "type": "string",
+                                        "example": "12345678"
+                                    },
+                                    "new_password": {
+                                        "type": "string",
+                                        "example": "newPassword123"
+                                    },
+                                    "new_password_confirmation": {
+                                        "type": "string",
+                                        "example": "newPassword123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contraseña actualizada correctamente"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reservations/{id}": {
+            "delete": {
+                "tags": [
+                    "Cliente"
+                ],
+                "summary": "Cancelar una reserva del cliente autenticado",
+                "description": "Permite al cliente cancelar una reserva confirmada con mínimo 24 horas de anticipación. No hay devolución de pago. El motivo es obligatorio.",
+                "operationId": "f10ed5ed21cae36647c9fc47fb5ed0a8",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la reserva a cancelar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 15
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "cancellation_reason"
+                                ],
+                                "properties": {
+                                    "cancellation_reason": {
+                                        "type": "string",
+                                        "maxLength": 500,
+                                        "minLength": 10,
+                                        "example": "Tuve un imprevisto personal y no podré asistir."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Reserva cancelada correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Reserva cancelada correctamente"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error de reglas de negocio",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Debes cancelar con mínimo 24 horas de anticipación"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "No autorizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No puedes cancelar esta reserva"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Reserva no encontrada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Reserva no encontrada"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error de validación"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "cancellation_reason": [
+                                                    "El motivo es obligatorio"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/consultants": {
+            "get": {
+                "tags": [
+                    "Consultores"
+                ],
+                "summary": "Listar asesores paginados",
+                "operationId": "b623671b25df157a58c2ecd74c06af33",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Número de página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de consultores paginado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Listado obtenido correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "example": 10
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 25
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 2
+                                                            },
+                                                            "nombres": {
+                                                                "type": "string",
+                                                                "example": "Carlos"
+                                                            },
+                                                            "apellidos": {
+                                                                "type": "string",
+                                                                "example": "Ramirez"
+                                                            },
+                                                            "email": {
+                                                                "type": "string",
+                                                                "example": "consultor@test.com"
+                                                            },
+                                                            "telefono": {
+                                                                "type": "string",
+                                                                "example": "987654321"
+                                                            },
+                                                            "foto": {
+                                                                "type": "string",
+                                                                "example": "foto.jpg"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/consultants/{id}/calendar": {
+            "get": {
+                "tags": [
+                    "Consultores"
+                ],
+                "summary": "Obtener calendario dinámico de un consultor por fecha",
+                "operationId": "fda8d9a003ac8ef92713afda49b1d476",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del consultor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Fecha en formato YYYY-MM-DD",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "2026-03-20"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Calendario generado correctamente"
+                    },
+                    "400": {
+                        "description": "Fecha inválida"
+                    },
+                    "404": {
+                        "description": "Consultor no encontrado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/consultant/reservations": {
+            "get": {
+                "tags": [
+                    "Consultores"
+                ],
+                "summary": "Listar reservas del consultor autenticado",
+                "operationId": "f2a6a9ce7d70aee323e4d5e3aa4c709a",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Filtrar por fecha YYYY-MM-DD",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "2024-10-23"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Número de página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de reservas obtenido correctamente"
+                    },
+                    "403": {
+                        "description": "No autorizado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/consultants/{id}": {
+            "get": {
+                "tags": [
+                    "Consultores"
+                ],
+                "summary": "Obtener detalle de un consultor",
+                "operationId": "fc9b7f212be5753ce098c88c6e433a1e",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del consultor",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 5
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle del consultor obtenido correctamente"
+                    },
+                    "404": {
+                        "description": "Consultor no encontrado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/consultant/calendar": {
+            "get": {
+                "tags": [
+                    "Consultores"
+                ],
+                "summary": "Obtener calendario del consultor autenticado",
+                "operationId": "e3e5c8c8265e2b6f3ac6a0bc7cc6404f",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Fecha en formato YYYY-MM-DD",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "2024-10-23"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Calendario obtenido correctamente"
+                    },
+                    "403": {
+                        "description": "No autorizado"
+                    },
+                    "400": {
+                        "description": "Fecha inválida"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/paypal/create-order": {
+            "post": {
+                "tags": [
+                    "Pagos"
+                ],
+                "summary": "Crear orden de pago en PayPal",
+                "operationId": "createPayPalOrder",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "consultant_id",
+                                    "date",
+                                    "hours"
+                                ],
+                                "properties": {
+                                    "consultant_id": {
+                                        "type": "integer",
+                                        "example": 5
+                                    },
+                                    "date": {
+                                        "type": "string",
+                                        "example": "2024-10-23"
+                                    },
+                                    "hours": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "example": "10:00"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Orden creada correctamente"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/paypal/webhook": {
+            "post": {
+                "tags": [
+                    "Pagos"
+                ],
+                "summary": "Webhook PayPal para confirmar pago",
+                "description": "Endpoint llamado por PayPal cuando el pago se completa",
+                "operationId": "19826948639c8df4f04e23de54395741",
+                "responses": {
+                    "200": {
+                        "description": "Pago confirmado y reservas creadas correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Pago confirmado y reservas creadas"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error de validación o pago no completado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Pago no completado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error en webhook"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de excepción"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Ingrese el token en formato: Bearer {token}",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Consultores",
+            "description": "Endpoints relacionados con los asesores"
+        },
+        {
+            "name": "Autenticación",
+            "description": "Autenticación"
+        },
+        {
+            "name": "Cliente",
+            "description": "Cliente"
+        },
+        {
+            "name": "Pagos",
+            "description": "Pagos"
+        }
+    ]
+}
