@@ -4,76 +4,20 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
 use App\Models\User;
+use App\Models\Service;
+use App\Models\ConsultantAvailability;
+use Carbon\Carbon;
 
-/**
- * @OA\Tag(
- *     name="Consultores",
- *     description="Endpoints relacionados con los asesores"
- * )
- */
 class ConsultantController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/consultants",
-     *     summary="Listar asesores paginados",
-     *     tags={"Consultores"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Número de página",
-     *         required=false,
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Listado de consultores paginado",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Listado obtenido correctamente"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="current_page", type="integer", example=1),
-     *                 @OA\Property(property="per_page", type="integer", example=10),
-     *                 @OA\Property(property="total", type="integer", example=25),
-     *                 @OA\Property(property="last_page", type="integer", example=3),
-     *                 @OA\Property(
-     *                     property="data",
-     *                     type="array",
-     *                     @OA\Items(
-     *                         @OA\Property(property="id", type="integer", example=2),
-     *                         @OA\Property(property="nombres", type="string", example="Carlos"),
-     *                         @OA\Property(property="apellidos", type="string", example="Ramirez"),
-     *                         @OA\Property(property="email", type="string", example="consultor@test.com"),
-     *                         @OA\Property(property="telefono", type="string", example="987654321"),
-     *                         @OA\Property(property="foto", type="string", example="foto.jpg")
-     *                     )
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=401,
-     *         description="No autenticado"
-     *     )
-     * )
-     */
     public function index(Request $request)
     {
         try {
-
-            // ⚠️ Ajusta el ID del rol consultor si es diferente
             $consultantRoleId = 2;
 
             $consultants = User::where('rol_id', $consultantRoleId)
-                ->select('id', 'nombres', 'apellidos', 'email', 'teléfono', 'foto')
+                ->select('id', 'nombres', 'apellidos', 'email', 'telefono', 'foto')
                 ->paginate(10);
 
             return response()->json([
@@ -83,7 +27,6 @@ class ConsultantController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener consultores',
@@ -92,58 +35,11 @@ class ConsultantController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/consultants/{id}/calendar",
-     *     summary="Obtener calendario dinámico de un consultor por fecha",
-     *     tags={"Consultores"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID del consultor",
-     *         @OA\Schema(type="integer", example=2)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="date",
-     *         in="query",
-     *         required=true,
-     *         description="Fecha en formato YYYY-MM-DD",
-     *         @OA\Schema(type="string", example="2026-03-20")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Calendario generado correctamente"
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=400,
-     *         description="Fecha inválida"
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Consultor no encontrado"
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=401,
-     *         description="No autenticado"
-     *     )
-     * )
-     */
     public function calendar(Request $request, $id)
     {
         try {
+            $consultantRoleId = 2;
 
-            $consultantRoleId = 2; // Ajustar si es diferente
-            $pricePerHour = 50;
-
-            // Validar fecha
             if (!$request->has('date')) {
                 return response()->json([
                     'success' => false,
@@ -160,7 +56,6 @@ class ConsultantController extends Controller
                 ], 400);
             }
 
-            // Verificar consultor
             $consultant = User::where('id', $id)
                 ->where('rol_id', $consultantRoleId)
                 ->first();
@@ -172,27 +67,48 @@ class ConsultantController extends Controller
                 ], 404);
             }
 
-            // Obtener reservas existentes del día
+            $services = Service::where('consultant_id', $id)
+                ->where('is_active', true)
+                ->get();
+
+            $dayOfWeek = Carbon::parse($date)->dayOfWeek;
+            $availability = ConsultantAvailability::where('consultant_id', $id)
+                ->where('day_of_week', $dayOfWeek)
+                ->where('is_available', true)
+                ->first();
+
             $existingReservations = \App\Models\Reservation::where('consultant_id', $id)
                 ->whereDate('reservation_date', $date)
                 ->where('reservation_status', 'confirmada')
                 ->where('payment_status', 'pagado')
                 ->get()
                 ->map(function ($reservation) {
-                    return \Carbon\Carbon::parse($reservation->start_time)->format('H:i');
+                    return Carbon::parse($reservation->start_time)->format('H:i');
                 })
                 ->toArray();
 
-            // Generar slots 09:00–18:00
+            if (!$availability) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Consultor no disponible este día',
+                    'data' => [
+                        'consultant_id' => $consultant->id,
+                        'consultant_name' => $consultant->nombres . ' ' . $consultant->apellidos,
+                        'date' => $date,
+                        'services' => $services,
+                        'slots' => [],
+                        'available' => false
+                    ]
+                ], 200);
+            }
+
             $slots = [];
-            $startHour = 9;
-            $endHour = 18;
+            $startHour = Carbon::parse($availability->start_time)->hour;
+            $endHour = Carbon::parse($availability->end_time)->hour;
 
             for ($hour = $startHour; $hour < $endHour; $hour++) {
-
                 $start = sprintf('%02d:00', $hour);
                 $end = sprintf('%02d:00', $hour + 1);
-
                 $isAvailable = !in_array($start, $existingReservations);
 
                 $slots[] = [
@@ -202,7 +118,6 @@ class ConsultantController extends Controller
                 ];
             }
 
-
             return response()->json([
                 'success' => true,
                 'message' => 'Calendario generado correctamente',
@@ -210,13 +125,12 @@ class ConsultantController extends Controller
                     'consultant_id' => $consultant->id,
                     'consultant_name' => $consultant->nombres . ' ' . $consultant->apellidos,
                     'date' => $date,
-                    'price_per_hour' => $pricePerHour,
+                    'services' => $services,
                     'slots' => $slots
                 ]
             ], 200);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Error al generar calendario',
@@ -225,52 +139,10 @@ class ConsultantController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/consultant/reservations",
-     *     summary="Listar reservas del consultor autenticado",
-     *     tags={"Consultores"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="date",
-     *         in="query",
-     *         description="Filtrar por fecha YYYY-MM-DD",
-     *         required=false,
-     *         @OA\Schema(type="string", example="2024-10-23")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Número de página",
-     *         required=false,
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Listado de reservas obtenido correctamente"
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=403,
-     *         description="No autorizado"
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=401,
-     *         description="No autenticado"
-     *     )
-     * )
-     */
     public function myReservations(Request $request)
     {
         try {
-
             $user = $request->user();
-
-            // ⚠️ Ajustar ID del rol consultor si es diferente
             $consultantRoleId = 2;
 
             if ($user->rol_id != $consultantRoleId) {
@@ -281,22 +153,19 @@ class ConsultantController extends Controller
             }
 
             $query = \App\Models\Reservation::with([
-                    'client:id,nombres,apellidos,email,teléfono'
+                    'client:id,nombres,apellidos,email,telefono'
                 ])
                 ->where('consultant_id', $user->id)
                 ->where('reservation_status', 'confirmada')
                 ->where('payment_status', 'pagado');
 
-            // Filtro opcional por fecha
             if ($request->has('date')) {
-
                 if (!\DateTime::createFromFormat('Y-m-d', $request->date)) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Formato de fecha inválido (YYYY-MM-DD)'
                     ], 400);
                 }
-
                 $query->whereDate('reservation_date', $request->date);
             }
 
@@ -312,7 +181,6 @@ class ConsultantController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener reservas',
@@ -321,42 +189,10 @@ class ConsultantController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/consultants/{id}",
-     *     summary="Obtener detalle de un consultor",
-     *     tags={"Consultores"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID del consultor",
-     *         @OA\Schema(type="integer", example=5)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Detalle del consultor obtenido correctamente"
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Consultor no encontrado"
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=401,
-     *         description="No autenticado"
-     *     )
-     * )
-     */
     public function show($id)
     {
         try {
-
-            $consultantRoleId = 2; // Ajustar si es diferente
+            $consultantRoleId = 2;
 
             $consultant = \App\Models\User::where('id', $id)
                 ->where('rol_id', $consultantRoleId)
@@ -384,7 +220,7 @@ class ConsultantController extends Controller
                     'nombres' => $consultant->nombres,
                     'apellidos' => $consultant->apellidos,
                     'email' => $consultant->email,
-                    'telefono' => $consultant->teléfono,
+                    'telefono' => $consultant->telefono,
                     'foto' => $consultant->foto,
                     'total_reservations_confirmed' => $totalReservations,
                     'total_revenue' => number_format($totalRevenue, 2)
@@ -392,7 +228,6 @@ class ConsultantController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener detalle',
@@ -401,44 +236,11 @@ class ConsultantController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/consultant/calendar",
-     *     summary="Obtener calendario del consultor autenticado",
-     *     tags={"Consultores"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="date",
-     *         in="query",
-     *         description="Fecha en formato YYYY-MM-DD",
-     *         required=true,
-     *         @OA\Schema(type="string", example="2024-10-23")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Calendario obtenido correctamente"
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=403,
-     *         description="No autorizado"
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=400,
-     *         description="Fecha inválida"
-     *     )
-     * )
-     */
     public function myCalendar(Request $request)
     {
         try {
-
             $user = $request->user();
-            $consultantRoleId = 2; // Ajustar si es diferente
-            $pricePerHour = 50;
+            $consultantRoleId = 2;
 
             if ($user->rol_id != $consultantRoleId) {
                 return response()->json([
@@ -463,8 +265,19 @@ class ConsultantController extends Controller
                 ], 400);
             }
 
+            $services = Service::where('consultant_id', $user->id)
+                ->where('is_active', true)
+                ->get();
+
+            $dayOfWeek = Carbon::parse($date)->dayOfWeek;
+            $availability = ConsultantAvailability::where('consultant_id', $user->id)
+                ->where('day_of_week', $dayOfWeek)
+                ->where('is_available', true)
+                ->first();
+
             $reservations = \App\Models\Reservation::with([
-                    'client:id,nombres,apellidos,email,teléfono'
+                    'client:id,nombres,apellidos,email,telefono',
+                    'service:id,name,price_per_hour'
                 ])
                 ->where('consultant_id', $user->id)
                 ->whereDate('reservation_date', $date)
@@ -473,20 +286,34 @@ class ConsultantController extends Controller
                 ->get();
 
             $reservedTimes = $reservations->map(function ($r) {
-                return \Carbon\Carbon::parse($r->start_time)->format('H:i');
+                return Carbon::parse($r->start_time)->format('H:i');
             })->toArray();
 
+            if (!$availability) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'No disponible este día',
+                    'data' => [
+                        'consultant_id' => $user->id,
+                        'consultant_name' => $user->nombres . ' ' . $user->apellidos,
+                        'date' => $date,
+                        'services' => $services,
+                        'slots' => [],
+                        'available' => false
+                    ]
+                ], 200);
+            }
+
             $slots = [];
-            $startHour = 9;
-            $endHour = 18;
+            $startHour = Carbon::parse($availability->start_time)->hour;
+            $endHour = Carbon::parse($availability->end_time)->hour;
 
             for ($hour = $startHour; $hour < $endHour; $hour++) {
-
                 $start = sprintf('%02d:00', $hour);
                 $end = sprintf('%02d:00', $hour + 1);
 
                 $reservationData = $reservations->first(function ($r) use ($start) {
-                    return \Carbon\Carbon::parse($r->start_time)->format('H:i') === $start;
+                    return Carbon::parse($r->start_time)->format('H:i') === $start;
                 });
 
                 $slots[] = [
@@ -508,13 +335,12 @@ class ConsultantController extends Controller
                     'consultant_id' => $user->id,
                     'consultant_name' => $user->nombres . ' ' . $user->apellidos,
                     'date' => $date,
-                    'price_per_hour' => $pricePerHour,
+                    'services' => $services,
                     'slots' => $slots
                 ]
             ], 200);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Error al generar calendario',
@@ -523,4 +349,180 @@ class ConsultantController extends Controller
         }
     }
 
+    public function getAvailability(Request $request, $id)
+    {
+        try {
+            $consultantRoleId = 2;
+
+            $consultant = User::where('id', $id)
+                ->where('rol_id', $consultantRoleId)
+                ->first();
+
+            if (!$consultant) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Consultor no encontrado'
+                ], 404);
+            }
+
+            $availability = ConsultantAvailability::where('consultant_id', $id)
+                ->orderBy('day_of_week')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $availability
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener disponibilidad',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function storeAvailability(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $consultantRoleId = 2;
+
+            if ($user->rol_id != $consultantRoleId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No autorizado'
+                ], 403);
+            }
+
+            $validated = $request->validate([
+                'day_of_week' => 'required|integer|min:0|max:6',
+                'start_time' => 'required|date_format:H:i',
+                'end_time' => 'required|date_format:H:i|after:start_time',
+                'is_available' => 'sometimes|boolean'
+            ]);
+
+            $exists = ConsultantAvailability::where('consultant_id', $user->id)
+                ->where('day_of_week', $validated['day_of_week'])
+                ->first();
+
+            if ($exists) {
+                $exists->update([
+                    'start_time' => $validated['start_time'],
+                    'end_time' => $validated['end_time'],
+                    'is_available' => $validated['is_available'] ?? true
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Disponibilidad actualizada',
+                    'data' => $exists
+                ], 200);
+            }
+
+            $availability = ConsultantAvailability::create([
+                'consultant_id' => $user->id,
+                'day_of_week' => $validated['day_of_week'],
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
+                'is_available' => $validated['is_available'] ?? true
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disponibilidad configurada',
+                'data' => $availability
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al configurar disponibilidad',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateAvailability(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+
+            $availability = ConsultantAvailability::find($id);
+
+            if (!$availability) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Disponibilidad no encontrada'
+                ], 404);
+            }
+
+            if ($availability->consultant_id != $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No autorizado'
+                ], 403);
+            }
+
+            $validated = $request->validate([
+                'day_of_week' => 'sometimes|integer|min:0|max:6',
+                'start_time' => 'sometimes|date_format:H:i',
+                'end_time' => 'sometimes|date_format:H:i|after:start_time',
+                'is_available' => 'sometimes|boolean'
+            ]);
+
+            $availability->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disponibilidad actualizada',
+                'data' => $availability
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroyAvailability(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+
+            $availability = ConsultantAvailability::find($id);
+
+            if (!$availability) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Disponibilidad no encontrada'
+                ], 404);
+            }
+
+            if ($availability->consultant_id != $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No autorizado'
+                ], 403);
+            }
+
+            $availability->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disponibilidad eliminada'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

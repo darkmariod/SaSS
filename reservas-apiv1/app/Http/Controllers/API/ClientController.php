@@ -56,7 +56,7 @@ class ClientController extends Controller
             }
 
             $query = \App\Models\Reservation::with([
-                    'consultant:id,nombres,apellidos,email,teléfono'
+                    'consultant:id,nombres,apellidos,email,telefono'
                 ])
                 ->where('user_id', $user->id);
 
@@ -140,7 +140,7 @@ class ClientController extends Controller
             }
 
             $payments = \App\Models\ReservationDetail::with([
-                    'reservation.consultant:id,nombres,apellidos,email,teléfono'
+                    'reservation.consultant:id,nombres,apellidos,email,telefono'
                 ])
                 ->whereHas('reservation', function ($q) use ($user) {
                     $q->where('user_id', $user->id)
@@ -197,7 +197,7 @@ class ClientController extends Controller
                     'nombres' => $user->nombres,
                     'apellidos' => $user->apellidos,
                     'email' => $user->email,
-                    'telefono' => $user->teléfono,
+                    'telefono' => $user->telefono,
                     'foto' => $user->foto,
                     'rol_id' => $user->rol_id,
                     'created_at' => $user->created_at
@@ -258,7 +258,7 @@ class ClientController extends Controller
 
             $user->nombres = $validated['nombres'];
             $user->apellidos = $validated['apellidos'];
-            $user->teléfono = $validated['telefono'];
+            $user->telefono = $validated['telefono'];
 
             if (isset($validated['foto'])) {
                 $user->foto = $validated['foto'];
@@ -274,7 +274,7 @@ class ClientController extends Controller
                     'nombres' => $user->nombres,
                     'apellidos' => $user->apellidos,
                     'email' => $user->email,
-                    'telefono' => $user->teléfono,
+                    'telefono' => $user->telefono,
                     'foto' => $user->foto
                 ]
             ], 200);
@@ -595,8 +595,8 @@ class ClientController extends Controller
 
             $user = $reservation->client;
 
-            if (!$user || !$user->teléfono) {
-                \Log::warning('Usuario sin teléfono válido para cancelación');
+            if (!$user || !$user->telefono) {
+                \Log::warning('Usuario sin telefono válido para cancelación');
                 return;
             }
 
@@ -606,7 +606,7 @@ class ClientController extends Controller
 
             $twilio = new Client($sid, $token);
 
-            $phone = trim($user->teléfono);
+            $phone = trim($user->telefono);
 
             if (!str_starts_with($phone, '+')) {
                 $phone = '+' . $phone;

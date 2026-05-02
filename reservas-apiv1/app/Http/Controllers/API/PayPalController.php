@@ -4,51 +4,23 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
 use Illuminate\Support\Str;
 use App\Models\PayPalOrder;
 use App\Models\Reservation;
 use Carbon\Carbon;
 use Srmklive\PayPal\Services\PayPal;
-
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ReservationConfirmedMail;
 use App\Models\User;
-
 use Twilio\Rest\Client;
 
 class PayPalController extends Controller
 {
-    /**
-     * @OA\Post(
-     *     path="/paypal/create-order",
-     *     operationId="createPayPalOrder",
-     *     summary="Crear orden de pago en PayPal",
-     *     tags={"Pagos"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"consultant_id","date","hours"},
-     *             @OA\Property(property="consultant_id", type="integer", example=5),
-     *             @OA\Property(property="date", type="string", example="2024-10-23"),
-     *             @OA\Property(
-     *                 property="hours",
-     *                 type="array",
-     *                 @OA\Items(type="string", example="10:00")
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(response=200, description="Orden creada correctamente")
-     * )
-     */
     public function createOrder(Request $request)
     {
         try {
-
             $user = $request->user();
             $clientRoleId = 3;
-            $pricePerHour = 50;
 
             if ($user->rol_id != $clientRoleId) {
                 return response()->json([
@@ -59,13 +31,26 @@ class PayPalController extends Controller
 
             $validated = $request->validate([
                 'consultant_id' => 'required|exists:users,id',
+                'service_id' => 'required|exists:services,id',
                 'date' => 'required|date',
                 'hours' => 'required|array|min:1'
             ]);
 
             $date = $validated['date'];
             $consultantId = $validated['consultant_id'];
+            $serviceId = $validated['service_id'];
             $hours = collect($validated['hours'])->sort()->values();
+
+            // Obtener el servicio para calcular el precio
+            $service = \App\Models\Service::findOrFail($serviceId);
+            
+            // Verificar que el servicio pertenezca al consultor
+            if ($service->consultant_id != $consultantId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El servicio no pertenece a este consultor'
+                ], 400);
+            }
 
             // Fecha no puede ser pasada
             if ($date < now()->format('Y-m-d')) {
@@ -77,9 +62,8 @@ class PayPalController extends Controller
 
             // Validar consecutividad
             for ($i = 0; $i < count($hours) - 1; $i++) {
-
-                $current = \Carbon\Carbon::createFromFormat('H:i', $hours[$i]);
-                $next = \Carbon\Carbon::createFromFormat('H:i', $hours[$i + 1]);
+                $current = Carbon::createFromFormat('H:i', $hours[$i]);
+                $next = Carbon::createFromFormat('H:i', $hours[$i + 1]);
 
                 if ($current->copy()->addHour()->format('H:i') !== $next->format('H:i')) {
                     return response()->json([
@@ -90,7 +74,7 @@ class PayPalController extends Controller
             }
 
             // Validar disponibilidad
-            $existingReservations = \App\Models\Reservation::where('consultant_id', $consultantId)
+            $existingReservations = Reservation::where('consultant_id', $consultantId)
                 ->whereDate('reservation_date', $date)
                 ->whereIn('start_time', $hours)
                 ->where('reservation_status', 'confirmada')
@@ -104,24 +88,25 @@ class PayPalController extends Controller
                 ], 400);
             }
 
-            $totalAmount = count($hours) * $pricePerHour;
+            $totalAmount = count($hours) * $service->price_per_hour;
 
-            // 🔥 Generar referencia UUID
-            $reference = \Illuminate\Support\Str::uuid()->toString();
+            // Generar referencia UUID
+            $reference = Str::uuid()->toString();
 
-            // 🔥 Guardar metadata en tabla paypal_orders
-            $paypalOrder = \App\Models\PayPalOrder::create([
+            // Guardar metadata en tabla paypal_orders
+            $paypalOrder = PayPalOrder::create([
                 'reference' => $reference,
                 'user_id' => $user->id,
                 'consultant_id' => $consultantId,
+                'service_id' => $serviceId,
                 'reservation_date' => $date,
                 'hours' => $hours,
                 'total_amount' => $totalAmount,
                 'status' => 'pending'
             ]);
 
-            // 🔥 Crear orden PayPal
-            $provider = new \Srmklive\PayPal\Services\PayPal();
+            // Crear orden PayPal
+            $provider = new PayPal();
             $provider->setApiCredentials(config('paypal'));
             $paypalToken = $provider->getAccessToken();
             $provider->setAccessToken($paypalToken);
@@ -139,30 +124,32 @@ class PayPalController extends Controller
                     ]
                 ],
                 "application_context" => [
-                    "return_url" => url('/paypal/success'),
-                    "cancel_url" => url('/paypal/cancel')
+                    "return_url" => url('/api/paypal/success'),
+                    "cancel_url" => url('/api/paypal/cancel')
                 ]
             ]);
 
-            // 🔥 Guardar order_id real de PayPal
-            $paypalOrder->update([
-                'paypal_order_id' => $order['id']
-            ]);
+            // Extraer links
+            $approveUrl = null;
+            $links = $order['links'] ?? [];
+            foreach ($links as $link) {
+                if ($link['rel'] === 'approve') {
+                    $approveUrl = $link['href'];
+                    break;
+                }
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Orden creada correctamente',
                 'data' => [
                     'reference' => $reference,
-                    'order_id' => $order['id'],
-                    'approval_url' => collect($order['links'])
-                        ->firstWhere('rel', 'approve')['href'] ?? null,
+                    'approve_url' => $approveUrl,
                     'total_amount' => $totalAmount
                 ]
             ], 200);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Error al crear orden',
@@ -171,43 +158,10 @@ class PayPalController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/paypal/webhook",
-     *     summary="Webhook PayPal para confirmar pago",
-     *     description="Endpoint llamado por PayPal cuando el pago se completa",
-     *     tags={"Pagos"},
-     *     @OA\Response(
-     *         response=200,
-     *         description="Pago confirmado y reservas creadas correctamente",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Pago confirmado y reservas creadas")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="Error de validación o pago no completado",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Pago no completado")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Error interno del servidor",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Error en webhook"),
-     *             @OA\Property(property="error", type="string", example="Mensaje de excepción")
-     *         )
-     *     )
-     * )
-     */
     public function webhook(Request $request)
     {
         try {
-
-            \Log::info('================ PAYPAL WEBHOOK START =================');
+            \Log::info('================ PAYPAL WEBHOOK START ================');
 
             $payload = $request->all();
             \Log::info('Payload:', $payload);
@@ -215,13 +169,8 @@ class PayPalController extends Controller
             $eventType = $payload['event_type'] ?? null;
             \Log::info('Event Type:', ['event_type' => $eventType]);
 
-            /*
-            ====================================================
-            🔹 1️⃣ SI ES APPROVED → CAPTURAR AUTOMÁTICAMENTE
-            ====================================================
-            */
+            // SI ES APPROVED → CAPTURAR AUTOMÁTICAMENTE
             if ($eventType === 'CHECKOUT.ORDER.APPROVED') {
-
                 \Log::info('Evento APPROVED detectado. Iniciando captura automática...');
 
                 $resource = $payload['resource'] ?? [];
@@ -246,11 +195,7 @@ class PayPalController extends Controller
                 ], 200);
             }
 
-            /*
-            ====================================================
-            🔹 2️⃣ SI ES CAPTURE COMPLETED → CREAR RESERVAS
-            ====================================================
-            */
+            // SI ES CAPTURE COMPLETED → CREAR RESERVAS
             if ($eventType === 'PAYMENT.CAPTURE.COMPLETED') {
 
                 \Log::info('Evento CAPTURE COMPLETED detectado');
@@ -283,53 +228,78 @@ class PayPalController extends Controller
                     return response()->json(['message' => 'Orden ya procesada'], 200);
                 }
 
-                foreach ($paypalOrder->hours as $hour) {
+                try {
+                    // USAR TRANSACCIÓN DB PARA EVITAR DOBLE RESERVA
+                    \Illuminate\Support\Facades\DB::transaction(function () use ($paypalOrder, $transactionId, $status, $payload, $reference) {
 
-                    $startTime = Carbon::createFromFormat('H:i', $hour);
-                    $endTime = $startTime->copy()->addHour();
+                        foreach ($paypalOrder->hours as $hour) {
 
-                    $reservation = Reservation::create([
-                        'user_id' => $paypalOrder->user_id,
-                        'consultant_id' => $paypalOrder->consultant_id,
-                        'reservation_date' => $paypalOrder->reservation_date,
-                        'start_time' => $startTime->format('H:i'),
-                        'end_time' => $endTime->format('H:i'),
-                        'reservation_status' => 'confirmada',
-                        'payment_status' => 'pagado',
-                        'total_amount' => $paypalOrder->total_amount
-                    ]);
+                            $startTime = Carbon::createFromFormat('H:i', $hour);
+                            $endTime = $startTime->copy()->addHour();
 
-                    \App\Models\ReservationDetail::create([
-                        'reservation_id' => $reservation->id,
-                        'transaction_id' => $transactionId,
-                        'payment_status' => $status,
-                        'amount' => $paypalOrder->total_amount,
-                        'response_json' => json_encode($payload)
-                    ]);
+                            // SELECT FOR UPDATE - BLOQUEA EL SLOT PARA EVITAR CONDICIÓN DE CARRERA
+                            $exists = Reservation::where('consultant_id', $paypalOrder->consultant_id)
+                                ->whereDate('reservation_date', $paypalOrder->reservation_date)
+                                ->where('start_time', $hour)
+                                ->where('reservation_status', 'confirmada')
+                                ->where('payment_status', 'pagado')
+                                ->lockForUpdate()
+                                ->exists();
+
+                            if ($exists) {
+                                throw new \Exception("El slot {$hour} ya está reservado");
+                            }
+
+                            $reservation = Reservation::create([
+                                'user_id' => $paypalOrder->user_id,
+                                'consultant_id' => $paypalOrder->consultant_id,
+                                'service_id' => $paypalOrder->service_id,
+                                'reservation_date' => $paypalOrder->reservation_date,
+                                'start_time' => $startTime->format('H:i'),
+                                'end_time' => $endTime->format('H:i'),
+                                'reservation_status' => 'confirmada',
+                                'payment_status' => 'pagado',
+                                'total_amount' => $paypalOrder->total_amount
+                            ]);
+
+                            \App\Models\ReservationDetail::create([
+                                'reservation_id' => $reservation->id,
+                                'transaction_id' => $transactionId,
+                                'payment_status' => $status,
+                                'amount' => $paypalOrder->total_amount,
+                                'response_json' => json_encode($payload)
+                            ]);
+                        }
+
+                        $paypalOrder->update([
+                            'status' => 'completed',
+                            'paypal_order_id' => $paypalOrderId ?? null
+                        ]);
+                    });
+
+                    \Log::info('Reservas creadas y orden actualizada');
+
+                    $this->sendReservationEmail($paypalOrder);
+                    $this->sendReservationWhatsApp($paypalOrder);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Pago confirmado y reservas creadas'
+                    ], 200);
+
+                } catch (\Exception $e) {
+                    \Log::error('Error en transacción de reserva: ' . $e->getMessage());
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error al procesar reservas: ' . $e->getMessage()
+                    ], 500);
                 }
-
-                $paypalOrder->update([
-                    'status' => 'completed',
-                    'paypal_order_id' => $paypalOrderId
-                ]);
-
-                \Log::info('Reservas creadas y orden actualizada');
-
-                $this->sendReservationEmail($paypalOrder);
-                $this->sendReservationWhatsApp($paypalOrder);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Pago confirmado y reservas creadas'
-                ], 200);
             }
 
             \Log::info('Evento no relevante, ignorado.');
-
             return response()->json(['message' => 'Evento ignorado'], 200);
 
         } catch (\Exception $e) {
-
             \Log::error('ERROR EN WEBHOOK', [
                 'error' => $e->getMessage(),
                 'line' => $e->getLine()
@@ -342,69 +312,63 @@ class PayPalController extends Controller
         }
     }
 
+    public function success(Request $request)
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Pago completado correctamente'
+        ]);
+    }
+
     private function sendReservationEmail($paypalOrder)
     {
         try {
-
             $user = User::find($paypalOrder->user_id);
+            $consultant = User::find($paypalOrder->consultant_id);
 
-            if (!$user || !$user->email) {
-                \Log::warning('Usuario sin email válido');
-                return;
+            if ($user && $consultant) {
+                Mail::to($user->email)->send(new ReservationConfirmedMail([
+                    'user_name' => $user->nombres . ' ' . $user->apellidos,
+                    'consultant_name' => $consultant->nombres . ' ' . $consultant->apellidos,
+                    'reservation_date' => $paypalOrder->reservation_date,
+                    'hours' => $paypalOrder->hours,
+                    'total_amount' => $paypalOrder->total_amount
+                ]));
             }
-
-            Mail::to($user->email)
-                ->send(new ReservationConfirmedMail($paypalOrder, $user));
-
-            \Log::info('Correo de confirmación enviado correctamente');
-
         } catch (\Exception $e) {
-
-            \Log::error('Error enviando correo', [
-                'error' => $e->getMessage()
-            ]);
+            \Log::error('Error al enviar email: ' . $e->getMessage());
         }
     }
 
     private function sendReservationWhatsApp($paypalOrder)
     {
         try {
-
             $user = User::find($paypalOrder->user_id);
+            
+            if ($user && $user->telefono) {
+                $twilioSid = config('services.twilio.sid');
+                $twilioToken = config('services.twilio.token');
+                $twilioFrom = config('services.twilio.from');
 
-            if (!$user || !$user->teléfono) {
-                \Log::warning('Usuario sin teléfono válido');
-                return;
+                if ($twilioSid && $twilioToken && $twilioFrom) {
+                    $client = new Client($twilioSid, $twilioToken);
+                    
+                    $message = "Hola {$user->nombres}, tu reserva ha sido confirmada. " .
+                              "Fecha: {$paypalOrder->reservation_date}, " .
+                              "Horas: " . implode(', ', $paypalOrder->hours) . ", " .
+                              "Total: $" . number_format($paypalOrder->total_amount, 2);
+
+                    $client->messages->create(
+                        "whatsapp:" . $user->telefono,
+                        [
+                            'from' => "whatsapp:" . $twilioFrom,
+                            'body' => $message
+                        ]
+                    );
+                }
             }
-
-            $sid = config('services.twilio.sid');
-            $token = config('services.twilio.token');
-            $from = config('services.twilio.whatsapp_from');
-
-            $twilio = new Client($sid, $token);
-
-            $messageBody = "✅ *Reserva Confirmada*\n\n"
-                . "📅 Fecha: {$paypalOrder->reservation_date}\n"
-                . "🕒 Horas: " . implode(', ', $paypalOrder->hours) . "\n"
-                . "💵 Total: {$paypalOrder->total_amount} USD\n\n"
-                . "Gracias por tu confianza 🙌";
-
-            $twilio->messages->create(
-                "whatsapp:{$user->teléfono}",
-                [
-                    "from" => $from,
-                    "body" => $messageBody
-                ]
-            );
-
-            \Log::info('WhatsApp enviado correctamente');
-
         } catch (\Exception $e) {
-
-            \Log::error('Error enviando WhatsApp', [
-                'error' => $e->getMessage()
-            ]);
+            \Log::error('Error al enviar WhatsApp: ' . $e->getMessage());
         }
     }
-
 }

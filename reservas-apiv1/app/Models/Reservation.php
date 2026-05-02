@@ -12,6 +12,7 @@ class Reservation extends Model
     protected $fillable = [
         'user_id',
         'consultant_id',
+        'service_id',
         'reservation_date',
         'start_time',
         'end_time',
@@ -41,5 +42,10 @@ class Reservation extends Model
     public function details()
     {
         return $this->hasMany(ReservationDetail::class, 'reservation_id');
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class, 'service_id');
     }
 }

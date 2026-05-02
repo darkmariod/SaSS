@@ -4,40 +4,12 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
-    /**
-     * @OA\Post(
-     *     path="/register",
-     *     summary="Registro de nuevo usuario",
-     *     tags={"Autenticación"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"nombres","apellidos","telefono","email","password","password_confirmation"},
-     *             @OA\Property(property="nombres", type="string", example="Juan"),
-     *             @OA\Property(property="apellidos", type="string", example="Perez"),
-     *             @OA\Property(property="telefono", type="string", example="999999999"),
-     *             @OA\Property(property="email", type="string", example="juan@test.com"),
-     *             @OA\Property(property="password", type="string", example="123456"),
-     *             @OA\Property(property="password_confirmation", type="string", example="123456")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=201,
-     *         description="Usuario registrado correctamente"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Errores de validación"
-     *     )
-     * )
-     */
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -57,15 +29,15 @@ class AuthController extends Controller
         }
 
         $user = User::create([
+            'name' => $request->nombres . ' ' . $request->apellidos,
             'nombres' => $request->nombres,
             'apellidos' => $request->apellidos,
-            'teléfono' => $request->telefono,
-            'rol_id' => 3, // ⚠️ Ajusta según tu BD (cliente)
+            'telefono' => $request->telefono,
+            'rol_id' => 3, // Cliente por defecto
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
-        // Crear token
         $token = $user->createToken('mobile-app')->plainTextToken;
 
         return response()->json([
@@ -79,29 +51,6 @@ class AuthController extends Controller
         ], 201);
     }
 
-    /**
-     * @OA\Post(
-     *     path="/login",
-     *     summary="Login de usuario",
-     *     tags={"Autenticación"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"email","password"},
-     *             @OA\Property(property="email", type="string", example="juan@test.com"),
-     *             @OA\Property(property="password", type="string", example="12345678")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Login exitoso"
-     *     ),
-     *     @OA\Response(
-     *         response=401,
-     *         description="Credenciales incorrectas"
-     *     )
-     * )
-     */
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -139,22 +88,6 @@ class AuthController extends Controller
         ], 200);
     }
 
-    /**
-     * @OA\Post(
-     *     path="/logout",
-     *     summary="Cerrar sesión",
-     *     tags={"Autenticación"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Response(
-     *         response=200,
-     *         description="Sesión cerrada correctamente"
-     *     ),
-     *     @OA\Response(
-     *         response=401,
-     *         description="No autenticado"
-     *     )
-     * )
-     */
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
