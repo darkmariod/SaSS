@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Node dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# PHP dependencies (will be installed in Docker)
+vendor
+
+# Build artifacts (will be built in Docker)
+public/build
+public/hot
+
+# Storage (runtime data, not needed in build)
+storage/*.sqlite
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing
+.phpunit.cache
+coverage
+*.log
+
+# Documentation
+README.md
+docs/
+
+# Build tools
+Makefile
+docker-compose.yml
