@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\CashRegisters\Pages;
 
 use App\Filament\Resources\CashRegisters\CashRegisterResource;
+use App\Models\CashRegister;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Builder;
 
 class CreateCashRegister extends CreateRecord
 {
@@ -25,6 +27,17 @@ class CreateCashRegister extends CreateRecord
         $data['difference_amount'] = 0;
 
         return $data;
+    }
+
+    protected function handleRecordCreation(array $data): CashRegister
+    {
+        return CashRegister::firstOrCreate(
+            [
+                'barber_shop_id' => $data['barber_shop_id'],
+                'date' => $data['date'],
+            ],
+            $data
+        );
     }
 
     protected function afterCreate(): void

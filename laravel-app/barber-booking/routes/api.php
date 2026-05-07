@@ -1,8 +1,14 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PublicBookingController;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// Rutas públicas para reservas (API/JSON)
+Route::post('/barberia/availability/check', [PublicBookingController::class, 'availability'])
+    ->name('public.booking.availability');
+
+Route::post('/barberia/reservations', [PublicBookingController::class, 'store'])
+    ->name('public.booking.store');
+
+Route::post('/barberia/reservations/{reservation}/receipt', [PublicBookingController::class, 'uploadReceipt'])
+    ->name('public.booking.receipt');

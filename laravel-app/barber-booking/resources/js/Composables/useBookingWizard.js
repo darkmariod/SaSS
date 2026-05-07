@@ -293,7 +293,7 @@ export function useBookingWizard(props) {
         loadingSlots.value = true;
 
         try {
-            const response = await axios.post("/barberia/availability/check", {
+            const response = await axios.post("/api/barberia/availability/check", {
                 service_id: bookableService.value.id,
                 addon_service_id: selectedAddon.value?.id || null,
                 barber_profile_id: finalBarberProfile.value.id,
@@ -370,7 +370,7 @@ export function useBookingWizard(props) {
         creatingReservation.value = true;
 
         try {
-            const response = await axios.post("/barberia/reservations", {
+            const response = await axios.post("/api/barberia/reservations", {
                 barber_shop_id: props.shop.id,
                 service_id: bookableService.value.id,
                 addon_service_id: selectedAddon.value?.id || null,
@@ -439,7 +439,7 @@ export function useBookingWizard(props) {
             formData.append("receipt_image", receiptFile.value);
 
             const response = await axios.post(
-                `/barberia/reservations/${createdReservation.value.id}/receipt`,
+                `/api/barberia/reservations/${createdReservation.value.id}/receipt`,
                 formData,
                 {
                     headers: {

@@ -80,6 +80,14 @@ class CashRegisterResource extends Resource
         return $query;
     }
 
+    public static function getRelations(): array
+    {
+        return [
+            RelationManagers\MovementsRelationManager::class,
+            RelationManagers\TransfersRelationManager::class,
+        ];
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema

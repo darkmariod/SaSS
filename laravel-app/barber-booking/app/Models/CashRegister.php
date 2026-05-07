@@ -61,6 +61,12 @@ class CashRegister extends Model
         return $this->hasMany(CashMovement::class);
     }
 
+    public function transfers(): HasMany
+    {
+        return $this->hasMany(Transfer::class, 'barber_shop_id', 'barber_shop_id')
+            ->whereDate('confirmed_at', $this->date);
+    }
+
     public function recalculate(): void
     {
         $manualIncome = $this->movements()

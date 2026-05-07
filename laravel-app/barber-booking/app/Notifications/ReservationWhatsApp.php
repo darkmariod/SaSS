@@ -5,7 +5,6 @@ namespace App\Notifications;
 use App\Models\Reservation;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Notification;
 
 class ReservationWhatsApp extends Notification
 {

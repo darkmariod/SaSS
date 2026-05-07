@@ -41,12 +41,16 @@ class CreateUser extends CreateRecord
             }
 
             if ($barberShopId) {
-                BarberProfile::create([
-                    'user_id' => $user->id,
-                    'barber_shop_id' => $barberShopId,
-                    'display_name' => $user->name,
-                    'is_active' => true,
-                ]);
+                BarberProfile::firstOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'barber_shop_id' => $barberShopId,
+                    ],
+                    [
+                        'display_name' => $user->name,
+                        'is_active' => true,
+                    ]
+                );
 
                 Log::info("BarberProfile creado automaticamente para usuario barbero: {$user->email}");
             }

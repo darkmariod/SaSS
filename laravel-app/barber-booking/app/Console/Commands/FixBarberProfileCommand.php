@@ -21,15 +21,18 @@ class FixBarberProfileCommand extends Command
             return self::FAILURE;
         }
 
-        $profile = BarberProfile::where('user_id', $barber->id)->first();
-
-        if (! $profile) {
-            $profile = BarberProfile::create([
+        $profile = BarberProfile::firstOrCreate(
+            [
                 'user_id' => $barber->id,
                 'barber_shop_id' => 1,
+            ],
+            [
                 'display_name' => $barber->name ?? 'Barber Test',
                 'is_active' => true,
-            ]);
+            ]
+        );
+
+        if ($profile->wasRecentlyCreated) {
             $this->info('BarberProfile created: ID=' . $profile->id);
         } else {
             $this->info('BarberProfile already exists: ID=' . $profile->id);
