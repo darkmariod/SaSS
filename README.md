@@ -1,0 +1,3 @@
+# SaSS
+
+Event management system.
