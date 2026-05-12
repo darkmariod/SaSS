@@ -1,12 +1,21 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import api from "@/services/api";
+import ProTable from '@/components/ProTable.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
 
 const paquetes = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const editingId = ref(null);
 const error = ref("");
+const toast = ref({ message: '', type: 'success' });
+const columns = [
+    { key: 'name', label: 'Paquete' },
+    { key: 'guest_range', label: 'Invitados', class: 'hidden md:table-cell' },
+    { key: 'price', label: 'Precio', align: 'right' },
+    { key: 'status', label: 'Estado' },
+];
 
 const form = reactive({
     name: "",
@@ -28,6 +37,10 @@ const resetForm = () => {
     form.price = 0;
     form.status = "activo";
 };
+
+const formatMoney = (value) => Number(value).toFixed(2);
+
+const dismissToast = () => { toast.value = { message: '', type: 'success' }; };
 
 const fetchPaquetes = async () => {
     loading.value = true;
@@ -56,6 +69,7 @@ const submit = async () => {
 
         resetForm();
         await fetchPaquetes();
+        toast.value = { message: isEditing.value ? 'Paquete actualizado' : 'Paquete creado', type: 'success' };
     } catch (exception) {
         error.value =
             exception.response?.data?.message ||
@@ -217,74 +231,61 @@ onMounted(fetchPaquetes);
                 >
             </div>
 
-            <div v-if="loading" class="py-10 text-center text-slate-500">
-                Cargando paquetes...
-            </div>
+            <ProTable
+                :columns="columns"
+                :rows="paquetes"
+                :loading="loading"
+                empty-message="No hay paquetes registrados."
+            >
+                <template #cell-name="{ row }">
+                    <p class="font-bold text-slate-900">
+                        {{ row.name }}
+                    </p>
+                    <p class="max-w-md truncate text-xs text-slate-500">
+                        {{ row.description || 'Sin descripción' }}
+                    </p>
+                </template>
 
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-slate-500">
-                            <th class="py-3 font-semibold">Paquete</th>
-                            <th class="py-3 font-semibold">Invitados</th>
-                            <th class="py-3 font-semibold">Precio</th>
-                            <th class="py-3 font-semibold">Estado</th>
-                            <th class="py-3 text-right font-semibold">
-                                Acciones
-                            </th>
-                        </tr>
-                    </thead>
+                <template #cell-guest_range="{ row }">
+                    <span class="text-slate-600">
+                        {{ row.guests_min }} - {{ row.guests_max }}
+                    </span>
+                </template>
 
-                    <tbody>
-                        <tr
-                            v-for="paquete in paquetes"
-                            :key="paquete.id"
-                            class="border-b border-slate-50"
-                        >
-                            <td class="py-4">
-                                <p class="font-bold text-slate-900">
-                                    {{ paquete.name }}
-                                </p>
-                                <p
-                                    class="max-w-md truncate text-xs text-slate-500"
-                                >
-                                    {{
-                                        paquete.description || "Sin descripción"
-                                    }}
-                                </p>
-                            </td>
-                            <td class="py-4 text-slate-600">
-                                {{ paquete.guests_min }} -
-                                {{ paquete.guests_max }}
-                            </td>
-                            <td class="py-4 font-semibold text-slate-900">
-                                ${{ Number(paquete.price).toFixed(2) }}
-                            </td>
-                            <td class="py-4">
-                                <span
-                                    class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
-                                >
-                                    {{ paquete.status }}
-                                </span>
-                            </td>
-                            <td class="py-4 text-right">
-                                <button
-                                    class="mr-2 rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
-                                    @click="editPaquete(paquete)"
-                                >
-                                    Editar
-                                </button>
-                                <button
-                                    class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
-                                    @click="deletePaquete(paquete)"
-                                >
-                                    Eliminar
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                <template #cell-price="{ row }">
+                    <span class="font-semibold text-slate-900">
+                        ${{ formatMoney(row.price) }}
+                    </span>
+                </template>
+
+                <template #cell-status="{ row }">
+                    <span
+                        class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
+                    >
+                        {{ row.status }}
+                    </span>
+                </template>
+
+                <template #actions="{ row }">
+                    <button
+                        class="rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+                        @click="editPaquete(row)"
+                    >
+                        Editar
+                    </button>
+                    <button
+                        class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
+                        @click="deletePaquete(row)"
+                    >
+                        Eliminar
+                    </button>
+                </template>
+            </ProTable>
         </article>
     </section>
+    <ToastNotification
+        :message="toast.message"
+        :type="toast.type"
+        @close="dismissToast"
+    />
 </template>

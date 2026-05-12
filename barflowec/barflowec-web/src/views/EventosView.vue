@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '@/services/api'
+import ProTable from '@/components/ProTable.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
 
 const eventos = ref([])
 const clientes = ref([])
@@ -9,6 +11,7 @@ const loading = ref(true)
 const saving = ref(false)
 const editingId = ref(null)
 const error = ref('')
+const toast = ref({ message: '', type: 'success' })
 
 const form = reactive({
   cliente_id: '',
@@ -83,6 +86,7 @@ const submit = async () => {
 
     resetForm()
     await fetchEventos()
+    toast.value = { message: 'Evento guardado correctamente.', type: 'success' }
   } catch (exception) {
     error.value = exception.response?.data?.message || 'No se pudo guardar el evento.'
   } finally {
@@ -239,54 +243,41 @@ onMounted(loadData)
         <span class="text-sm font-semibold text-slate-400">{{ eventos.length }} registros</span>
       </div>
 
-      <div v-if="loading" class="py-10 text-center text-slate-500">Cargando eventos...</div>
-
-      <div v-else class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
-          <thead>
-            <tr class="border-b border-slate-100 text-slate-500">
-              <th class="py-3 font-semibold">Evento</th>
-              <th class="py-3 font-semibold">Cliente</th>
-              <th class="py-3 font-semibold">Fecha</th>
-              <th class="py-3 font-semibold">Estado</th>
-              <th class="py-3 text-right font-semibold">Acciones</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr v-for="evento in eventos" :key="evento.id" class="border-b border-slate-50">
-              <td class="py-4">
-                <p class="font-bold text-slate-900">{{ evento.name }}</p>
-                <p class="text-xs text-slate-500">{{ evento.location || 'Sin lugar' }} · {{ evento.bartender_name || 'Sin bartender' }}</p>
-              </td>
-              <td class="py-4 text-slate-600">{{ evento.cliente?.name || 'Sin cliente' }}</td>
-              <td class="py-4 text-slate-600">{{ evento.event_date }}</td>
-              <td class="py-4">
-                <span
-                  class="rounded-full px-3 py-1 text-xs font-bold"
-                  :class="statusClasses[evento.status] || 'bg-slate-100 text-slate-700'"
-                >
-                  {{ evento.status }}
-                </span>
-              </td>
-              <td class="py-4 text-right">
-                <button
-                  class="mr-2 rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
-                  @click="editEvento(evento)"
-                >
-                  Editar
-                </button>
-                <button
-                  class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
-                  @click="deleteEvento(evento)"
-                >
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+            <ProTable
+                :columns="[
+                    { key: 'name', label: 'Evento' },
+                    { key: 'cliente', label: 'Cliente', class: 'hidden md:table-cell' },
+                    { key: 'event_date', label: 'Fecha' },
+                    { key: 'location', label: 'Ubicación', class: 'hidden lg:table-cell' },
+                    { key: 'status', label: 'Estado' },
+                ]"
+                :rows="eventos"
+                :loading="loading"
+                empty-message="No hay eventos registrados."
+                empty-icon="📅"
+            >
+                <template #cell-name="{ row }">
+                    <p class="font-bold text-slate-900">{{ row.name }}</p>
+                    <p class="text-xs text-slate-400">{{ row.bartender_name || 'Sin bartender' }}</p>
+                </template>
+                <template #cell-cliente="{ row }">
+                    <span class="text-slate-600">{{ row.cliente?.name || 'Sin cliente' }}</span>
+                </template>
+                <template #cell-status="{ row }">
+                    <span
+                        class="rounded-full px-3 py-1 text-xs font-bold"
+                        :class="statusClasses[row.status] || 'bg-slate-100 text-slate-700'"
+                    >
+                        {{ row.status }}
+                    </span>
+                </template>
+                <template #actions="{ row }">
+                    <button class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50" @click="editEvento(row)">Editar</button>
+                    <button class="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-100" @click="deleteEvento(row)">Eliminar</button>
+                </template>
+            </ProTable>
     </article>
   </section>
+
+  <ToastNotification :message="toast.message" :type="toast.type" @close="toast.message = ''" />
 </template>

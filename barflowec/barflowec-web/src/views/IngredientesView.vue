@@ -1,12 +1,15 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import api from "@/services/api";
+import ProTable from "@/components/ProTable.vue";
+import ToastNotification from "@/components/ToastNotification.vue";
 
 const ingredientes = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const editingId = ref(null);
 const error = ref("");
+const toast = ref({ message: "", type: "success" });
 
 const form = reactive({
     name: "",
@@ -56,6 +59,12 @@ const submit = async () => {
 
         resetForm();
         await fetchIngredientes();
+        toast.value = {
+            message: isEditing.value
+                ? "Ingrediente actualizado correctamente."
+                : "Ingrediente creado correctamente.",
+            type: "success",
+        };
     } catch (exception) {
         error.value =
             exception.response?.data?.message ||
@@ -80,7 +89,21 @@ const deleteIngrediente = async (ingrediente) => {
 
     await api.delete(`/ingredientes/${ingrediente.id}`);
     await fetchIngredientes();
+    toast.value = {
+        message: "Ingrediente eliminado correctamente.",
+        type: "success",
+    };
 };
+
+const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`
+
+const columns = [
+    { key: "name", label: "Recurso" },
+    { key: "unit", label: "Unidad", class: "hidden md:table-cell" },
+    { key: "stock", label: "Stock", align: "right" },
+    { key: "cost", label: "Costo", align: "right", class: "hidden lg:table-cell" },
+    { key: "status", label: "Estado" },
+]
 
 const stockClass = (ingrediente) => {
     return Number(ingrediente.stock) <= Number(ingrediente.min_stock)
@@ -232,74 +255,69 @@ onMounted(fetchIngredientes);
                 >
             </div>
 
-            <div v-if="loading" class="py-10 text-center text-slate-500">
-                Cargando ingredientes...
-            </div>
-
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-slate-500">
-                            <th class="py-3 font-semibold">Ingrediente</th>
-                            <th class="py-3 font-semibold">Unidad</th>
-                            <th class="py-3 font-semibold">Stock</th>
-                            <th class="py-3 font-semibold">Costo</th>
-                            <th class="py-3 font-semibold">Estado</th>
-                            <th class="py-3 text-right font-semibold">
-                                Acciones
-                            </th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <tr
-                            v-for="ingrediente in ingredientes"
-                            :key="ingrediente.id"
-                            class="border-b border-slate-50"
+            <ProTable
+                :columns="columns"
+                :rows="ingredientes"
+                :loading="loading"
+                empty-message="No hay ingredientes registrados."
+            >
+                <template #cell-name="{ row }">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-slate-900">{{ row.name }}</span>
+                        <span
+                            v-if="Number(row.stock) <= Number(row.min_stock) && row.min_stock > 0"
+                            class="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-bold text-yellow-700"
                         >
-                            <td class="py-4 font-bold text-slate-900">
-                                {{ ingrediente.name }}
-                            </td>
-                            <td class="py-4 text-slate-600">
-                                {{ ingrediente.unit }}
-                            </td>
-                            <td class="py-4">
-                                <span
-                                    class="rounded-full px-3 py-1 text-xs font-bold"
-                                    :class="stockClass(ingrediente)"
-                                >
-                                    {{ ingrediente.stock }} / min
-                                    {{ ingrediente.min_stock }}
-                                </span>
-                            </td>
-                            <td class="py-4 font-semibold text-slate-900">
-                                ${{ ingrediente.cost }}
-                            </td>
-                            <td class="py-4">
-                                <span
-                                    class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
-                                >
-                                    {{ ingrediente.status }}
-                                </span>
-                            </td>
-                            <td class="py-4 text-right">
-                                <button
-                                    class="mr-2 rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
-                                    @click="editIngrediente(ingrediente)"
-                                >
-                                    Editar
-                                </button>
-                                <button
-                                    class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
-                                    @click="deleteIngrediente(ingrediente)"
-                                >
-                                    Eliminar
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                            ⚠ Stock bajo
+                        </span>
+                    </div>
+                </template>
+
+                <template #cell-stock="{ row }">
+                    <span
+                        class="inline-block rounded-full px-3 py-1 text-xs font-bold"
+                        :class="stockClass(row)"
+                    >
+                        {{ row.stock }} / min {{ row.min_stock }}
+                    </span>
+                </template>
+
+                <template #cell-cost="{ row }">
+                    <span class="font-semibold text-slate-900">
+                        {{ formatMoney(row.cost) }}
+                    </span>
+                </template>
+
+                <template #cell-status="{ row }">
+                    <span
+                        class="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
+                    >
+                        {{ row.status }}
+                    </span>
+                </template>
+
+                <template #actions="{ row }">
+                    <button
+                        class="rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+                        @click="editIngrediente(row)"
+                    >
+                        Editar
+                    </button>
+                    <button
+                        class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
+                        @click="deleteIngrediente(row)"
+                    >
+                        Eliminar
+                    </button>
+                </template>
+            </ProTable>
         </article>
     </section>
+
+    <ToastNotification
+        v-if="toast.message"
+        :message="toast.message"
+        :type="toast.type"
+        @close="toast.message = ''"
+    />
 </template>

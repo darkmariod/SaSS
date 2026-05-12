@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '@/services/api'
+import ProTable from '@/components/ProTable.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
 
 const pagos = ref([])
 const cotizaciones = ref([])
@@ -9,6 +11,15 @@ const loading = ref(true)
 const saving = ref(false)
 const editingId = ref(null)
 const error = ref('')
+const toast = ref({ message: '', type: 'success' })
+
+const columns = [
+  { key: 'cotizacion', label: 'Propuesta', class: 'hidden md:table-cell' },
+  { key: 'amount', label: 'Monto', align: 'right' },
+  { key: 'payment_method', label: 'Método' },
+  { key: 'paid_at', label: 'Fecha' },
+  { key: 'status', label: 'Estado' },
+]
 
 const form = reactive({
   cotizacion_id: '',
@@ -82,6 +93,7 @@ const submit = async () => {
 
     resetForm()
     await fetchPagos()
+    toast.value = { message: 'Pago guardado correctamente.', type: 'success' }
   } catch (exception) {
     error.value = exception.response?.data?.message || 'No se pudo guardar el pago.'
   } finally {
@@ -244,57 +256,52 @@ onMounted(loadData)
         <span class="text-sm font-semibold text-slate-400">{{ pagos.length }} registros</span>
       </div>
 
-      <div v-if="loading" class="py-10 text-center text-slate-500">Cargando pagos...</div>
+      <ProTable
+        :columns="columns"
+        :rows="pagos"
+        :loading="loading"
+        empty-message="No hay pagos registrados."
+      >
+        <template #cell-cotizacion="{ row }">
+          <p>{{ row.cotizacion?.quote_number || 'Sin cotización' }}</p>
+          <p class="text-xs text-slate-500">{{ row.evento?.name || 'Sin evento' }}</p>
+        </template>
 
-      <div v-else class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
-          <thead>
-            <tr class="border-b border-slate-100 text-slate-500">
-              <th class="py-3 font-semibold">Monto</th>
-              <th class="py-3 font-semibold">Referencia</th>
-              <th class="py-3 font-semibold">Relación</th>
-              <th class="py-3 font-semibold">Estado</th>
-              <th class="py-3 text-right font-semibold">Acciones</th>
-            </tr>
-          </thead>
+        <template #cell-amount="{ row }">
+          <p class="font-bold text-slate-900">{{ formatMoney(row.amount) }}</p>
+          <p class="text-xs text-slate-500">{{ row.payment_method }} · {{ row.paid_at || 'sin fecha' }}</p>
+        </template>
 
-          <tbody>
-            <tr v-for="pago in pagos" :key="pago.id" class="border-b border-slate-50">
-              <td class="py-4">
-                <p class="font-bold text-slate-900">{{ formatMoney(pago.amount) }}</p>
-                <p class="text-xs text-slate-500">{{ pago.payment_method }} · {{ pago.paid_at || 'sin fecha' }}</p>
-              </td>
-              <td class="py-4 text-slate-600">{{ pago.reference || '-' }}</td>
-              <td class="py-4 text-slate-600">
-                <p>{{ pago.cotizacion?.quote_number || 'Sin cotización' }}</p>
-                <p class="text-xs text-slate-500">{{ pago.evento?.name || 'Sin evento' }}</p>
-              </td>
-              <td class="py-4">
-                <span
-                  class="rounded-full px-3 py-1 text-xs font-bold"
-                  :class="statusClasses[pago.status] || 'bg-slate-100 text-slate-700'"
-                >
-                  {{ pago.status }}
-                </span>
-              </td>
-              <td class="py-4 text-right">
-                <button
-                  class="mr-2 rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
-                  @click="editPago(pago)"
-                >
-                  Editar
-                </button>
-                <button
-                  class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
-                  @click="deletePago(pago)"
-                >
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <template #cell-status="{ row }">
+          <span
+            class="rounded-full px-3 py-1 text-xs font-bold"
+            :class="statusClasses[row.status] || 'bg-slate-100 text-slate-700'"
+          >
+            {{ row.status }}
+          </span>
+        </template>
+
+        <template #actions="{ row }">
+          <button
+            class="rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+            @click="editPago(row)"
+          >
+            Editar
+          </button>
+          <button
+            class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
+            @click="deletePago(row)"
+          >
+            Eliminar
+          </button>
+        </template>
+      </ProTable>
     </article>
   </section>
+  <ToastNotification
+    v-if="toast.message"
+    :message="toast.message"
+    :type="toast.type"
+    @close="toast.message = ''"
+  />
 </template>

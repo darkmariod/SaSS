@@ -18,13 +18,18 @@ Route::get('/health', function () {
     ]);
 });
 
-Route::post('/login', [AuthController::class, 'login']);
+// Login con rate limiting (5 intentos/minuto por IP)
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:login');
 
-Route::middleware('auth:sanctum')->group(function () {
+// Rutas protegidas con rate limiting general (120 req/min)
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    Route::get('/cotizaciones/{cotizacion}/export', [CotizacionController::class, 'export']);
 
     Route::apiResource('clientes', ClienteController::class);
     Route::apiResource('ingredientes', IngredienteController::class);

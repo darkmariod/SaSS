@@ -1,12 +1,22 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import api from "@/services/api";
+import ProTable from "@/components/ProTable.vue";
+import ToastNotification from "@/components/ToastNotification.vue";
 
 const clientes = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const editingId = ref(null);
 const error = ref("");
+const toast = ref({ message: "", type: "success" });
+
+const columns = [
+    { key: "name", label: "Cliente" },
+    { key: "email", label: "Contacto" },
+    { key: "company", label: "Empresa", class: "hidden md:table-cell" },
+    { key: "status", label: "Estado" },
+];
 
 const form = reactive({
     name: "",
@@ -53,6 +63,12 @@ const submit = async () => {
 
         resetForm();
         await fetchClientes();
+        toast.value = {
+            message: isEditing.value
+                ? "Cliente actualizado correctamente."
+                : "Cliente creado correctamente.",
+            type: "success",
+        };
     } catch (exception) {
         error.value =
             exception.response?.data?.message ||
@@ -229,75 +245,62 @@ onMounted(fetchClientes);
                 >
             </div>
 
-            <div v-if="loading" class="py-10 text-center text-slate-500">
-                Cargando clientes...
-            </div>
-
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-slate-500">
-                            <th class="py-3 font-semibold">Cliente</th>
-                            <th class="py-3 font-semibold">Contacto</th>
-                            <th class="py-3 font-semibold">Empresa</th>
-                            <th class="py-3 font-semibold">Estado</th>
-                            <th class="py-3 text-right font-semibold">
-                                Acciones
-                            </th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <tr
-                            v-for="cliente in clientes"
-                            :key="cliente.id"
-                            class="border-b border-slate-50"
-                        >
-                            <td class="py-4">
-                                <p class="font-bold text-slate-900">
-                                    {{ cliente.name }}
-                                </p>
-                                <p class="text-xs text-slate-500">
-                                    {{
-                                        cliente.identification ||
-                                        "Sin identificación"
-                                    }}
-                                </p>
-                            </td>
-                            <td class="py-4 text-slate-600">
-                                <p>{{ cliente.email || "Sin email" }}</p>
-                                <p class="text-xs">
-                                    {{ cliente.phone || "Sin teléfono" }}
-                                </p>
-                            </td>
-                            <td class="py-4 text-slate-600">
-                                {{ cliente.company || "-" }}
-                            </td>
-                            <td class="py-4">
-                                <span
-                                    class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
-                                >
-                                    {{ cliente.status }}
-                                </span>
-                            </td>
-                            <td class="py-4 text-right">
-                                <button
-                                    class="mr-2 rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
-                                    @click="editCliente(cliente)"
-                                >
-                                    Editar
-                                </button>
-                                <button
-                                    class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
-                                    @click="deleteCliente(cliente)"
-                                >
-                                    Eliminar
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <ProTable
+                :columns="columns"
+                :rows="clientes"
+                :loading="loading"
+                empty-message="No hay clientes registrados."
+                empty-icon="👤"
+            >
+                <template #cell-name="{ row }">
+                    <div>
+                        <p class="font-bold text-slate-900">{{ row.name }}</p>
+                        <p class="text-xs text-slate-500">
+                            {{ row.identification || "Sin identificación" }}
+                        </p>
+                    </div>
+                </template>
+                <template #cell-email="{ row }">
+                    <div>
+                        <p>{{ row.email || "Sin email" }}</p>
+                        <p class="text-xs text-slate-400">
+                            {{ row.phone || "Sin teléfono" }}
+                        </p>
+                    </div>
+                </template>
+                <template #cell-status="{ row }">
+                    <span
+                        class="inline-block rounded-full px-3 py-1 text-xs font-bold"
+                        :class="
+                            row.status === 'activo'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-red-50 text-red-700'
+                        "
+                    >
+                        {{ row.status }}
+                    </span>
+                </template>
+                <template #actions="{ row }">
+                    <button
+                        class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        @click="editCliente(row)"
+                    >
+                        Editar
+                    </button>
+                    <button
+                        class="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-100"
+                        @click="deleteCliente(row)"
+                    >
+                        Eliminar
+                    </button>
+                </template>
+            </ProTable>
         </article>
     </section>
+
+    <ToastNotification
+        :message="toast.message"
+        :type="toast.type"
+        @close="toast.message = ''"
+    />
 </template>

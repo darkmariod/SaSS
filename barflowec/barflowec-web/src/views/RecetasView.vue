@@ -1,12 +1,16 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import api from "@/services/api";
+import ProTable from '@/components/ProTable.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
 
 const recetas = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const editingId = ref(null);
 const error = ref("");
+const toast = ref({ message: '', type: 'success' })
+const clearToast = () => { toast.value = { message: '', type: 'success' } }
 
 const form = reactive({
     name: "",
@@ -55,6 +59,7 @@ const submit = async () => {
 
         resetForm();
         await fetchRecetas();
+        toast.value = { message: 'Receta guardada correctamente.', type: 'success' }
     } catch (exception) {
         error.value =
             exception.response?.data?.message ||
@@ -80,6 +85,17 @@ const deleteReceta = async (receta) => {
     await api.delete(`/recetas/${receta.id}`);
     await fetchRecetas();
 };
+
+const formatMoney = (value) => {
+    return `$${Number(value).toFixed(2)}`
+}
+
+const columns = [
+    { key: 'name', label: 'Servicio' },
+    { key: 'description', label: 'Descripción', class: 'hidden md:table-cell' },
+    { key: 'price', label: 'Precio', align: 'right' },
+    { key: 'status', label: 'Estado' },
+]
 
 onMounted(fetchRecetas);
 </script>
@@ -215,73 +231,57 @@ onMounted(fetchRecetas);
                 >
             </div>
 
-            <div v-if="loading" class="py-10 text-center text-slate-500">
-                Cargando recetas...
-            </div>
+            <ProTable
+                :columns="columns"
+                :rows="recetas"
+                :loading="loading"
+                empty-message="No hay recetas registradas."
+            >
+                <template #cell-name="{ row }">
+                    <p class="font-bold text-slate-900">{{ row.name }}</p>
+                    <p class="max-w-md truncate text-xs text-slate-500">
+                        {{ row.description || "Sin descripción" }}
+                    </p>
+                </template>
 
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-slate-500">
-                            <th class="py-3 font-semibold">Receta</th>
-                            <th class="py-3 font-semibold">Porciones</th>
-                            <th class="py-3 font-semibold">Precio</th>
-                            <th class="py-3 font-semibold">Estado</th>
-                            <th class="py-3 text-right font-semibold">
-                                Acciones
-                            </th>
-                        </tr>
-                    </thead>
+                <template #cell-description="{ row }">
+                    {{ row.description || "Sin descripción" }}
+                </template>
 
-                    <tbody>
-                        <tr
-                            v-for="receta in recetas"
-                            :key="receta.id"
-                            class="border-b border-slate-50"
-                        >
-                            <td class="py-4">
-                                <p class="font-bold text-slate-900">
-                                    {{ receta.name }}
-                                </p>
-                                <p
-                                    class="max-w-md truncate text-xs text-slate-500"
-                                >
-                                    {{
-                                        receta.description || "Sin descripción"
-                                    }}
-                                </p>
-                            </td>
-                            <td class="py-4 text-slate-600">
-                                {{ receta.servings }}
-                            </td>
-                            <td class="py-4 font-semibold text-slate-900">
-                                ${{ Number(receta.price).toFixed(2) }}
-                            </td>
-                            <td class="py-4">
-                                <span
-                                    class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
-                                >
-                                    {{ receta.status }}
-                                </span>
-                            </td>
-                            <td class="py-4 text-right">
-                                <button
-                                    class="mr-2 rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
-                                    @click="editReceta(receta)"
-                                >
-                                    Editar
-                                </button>
-                                <button
-                                    class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
-                                    @click="deleteReceta(receta)"
-                                >
-                                    Eliminar
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                <template #cell-price="{ row }">
+                    <span class="font-semibold text-slate-900">{{ formatMoney(row.price) }}</span>
+                </template>
+
+                <template #cell-status="{ row }">
+                    <span
+                        class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
+                    >
+                        {{ row.status }}
+                    </span>
+                </template>
+
+                <template #actions="{ row }">
+                    <button
+                        class="rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+                        @click="editReceta(row)"
+                    >
+                        Editar
+                    </button>
+                    <button
+                        class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
+                        @click="deleteReceta(row)"
+                    >
+                        Eliminar
+                    </button>
+                </template>
+            </ProTable>
         </article>
     </section>
+
+    <ToastNotification
+        v-if="toast.message"
+        :message="toast.message"
+        :type="toast.type"
+        @close="clearToast"
+    />
 </template>

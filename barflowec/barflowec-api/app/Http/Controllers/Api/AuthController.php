@@ -10,6 +10,19 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * Inicio de sesión con cookies httpOnly (Sanctum SPA).
+     *
+     * Flujo SPA (con sesión):
+     * 1. Frontend llama a GET /sanctum/csrf-cookie (setea XSRF-TOKEN)
+     * 2. Frontend envía POST /api/login con credenciales
+     * 3. Este método autentica, regenera sesión y setea cookie httpOnly
+     * 4. Todas las requests subsecuentes usan la cookie de sesión
+     *
+     * Para requests sin sesión (tests, API clients):
+     * - Autentica al usuario sin regenerar sesión
+     * - Las rutas protegidas con auth:sanctum siguen funcionando vía token
+     */
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
@@ -17,23 +30,26 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt($credentials)) {
+        if (! Auth::attempt($credentials, true)) {
             throw ValidationException::withMessages([
                 'email' => ['Credenciales inválidas.'],
             ]);
         }
 
-        $user = $request->user();
-        $token = $user->createToken('barflowec-api-token')->plainTextToken;
+        // Regenerar sesión solo si está disponible (SPA mode)
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
         return response()->json([
             'message' => 'Login correcto.',
-            'token_type' => 'Bearer',
-            'token' => $token,
-            'user' => $user,
+            'user' => $request->user(),
         ]);
     }
 
+    /**
+     * Retorna el usuario autenticado vía cookie de sesión o token.
+     */
     public function me(Request $request): JsonResponse
     {
         return response()->json([
@@ -41,9 +57,18 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Cierra sesión.
+     * Invalida sesión si está disponible (SPA mode).
+     */
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()?->delete();
+        Auth::guard('web')->logout();
+
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json([
             'message' => 'Sesión cerrada correctamente.',

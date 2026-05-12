@@ -29,8 +29,9 @@ const router = createRouter({
           name: "dashboard",
           component: DashboardView,
           meta: {
-            title: "Dashboard",
-            subtitle: "Resumen operativo de BarFlowEC",
+            title: "Panel comercial",
+            subtitle:
+              "Clientes, propuestas, agenda, recursos y cobros en un solo panel.",
           },
         },
         {
@@ -39,7 +40,7 @@ const router = createRouter({
           component: ClientesView,
           meta: {
             title: "Clientes",
-            subtitle: "Gestión comercial de clientes",
+            subtitle: "Contactos y empresas que solicitan eventos.",
           },
         },
         {
@@ -47,8 +48,8 @@ const router = createRouter({
           name: "recetas",
           component: RecetasView,
           meta: {
-            title: "Recetas",
-            subtitle: "Catálogo de bebidas y preparación",
+            title: "Servicios",
+            subtitle: "Servicios que puedes incluir en paquetes y propuestas.",
           },
         },
         {
@@ -56,8 +57,9 @@ const router = createRouter({
           name: "ingredientes",
           component: IngredientesView,
           meta: {
-            title: "Ingredientes",
-            subtitle: "Inventario base para recetas y paquetes",
+            title: "Recursos / Inventario",
+            subtitle:
+              "Insumos, equipos y recursos necesarios para operar eventos.",
           },
         },
         {
@@ -66,7 +68,8 @@ const router = createRouter({
           component: PaquetesView,
           meta: {
             title: "Paquetes",
-            subtitle: "Ofertas comerciales para eventos",
+            subtitle:
+              "Planes comerciales por tipo de evento, invitados y servicio.",
           },
         },
         {
@@ -74,8 +77,8 @@ const router = createRouter({
           name: "cotizaciones",
           component: CotizacionesView,
           meta: {
-            title: "Cotizaciones",
-            subtitle: "Flujo comercial de propuestas para eventos",
+            title: "Propuestas",
+            subtitle: "Cotizaciones comerciales enviadas a clientes.",
           },
         },
         {
@@ -83,8 +86,8 @@ const router = createRouter({
           name: "eventos",
           component: EventosView,
           meta: {
-            title: "Eventos",
-            subtitle: "Agenda operativa de servicios contratados",
+            title: "Agenda",
+            subtitle: "Eventos confirmados, por confirmar y finalizados.",
           },
         },
         {
@@ -92,8 +95,8 @@ const router = createRouter({
           name: "pagos",
           component: PagosView,
           meta: {
-            title: "Pagos",
-            subtitle: "Control de cobros, anticipos y saldos",
+            title: "Cobros",
+            subtitle: "Anticipos, pagos realizados y saldos pendientes.",
           },
         },
       ],

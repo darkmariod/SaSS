@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import api from "@/services/api";
+import ProTable from "@/components/ProTable.vue";
+import ToastNotification from "@/components/ToastNotification.vue";
 
 const cotizaciones = ref([]);
 const clientes = ref([]);
@@ -8,6 +10,17 @@ const loading = ref(true);
 const saving = ref(false);
 const editingId = ref(null);
 const error = ref("");
+const success = ref("");
+const toast = ref({ message: "", type: "success" });
+
+const columns = [
+    { key: "quote_number", label: "Código" },
+    { key: "cliente", label: "Cliente", class: "hidden md:table-cell" },
+    { key: "evento", label: "Evento" },
+    { key: "subtotal", label: "Subtotal", align: "right", class: "hidden lg:table-cell" },
+    { key: "total", label: "Total", align: "right" },
+    { key: "status", label: "Estado" },
+];
 
 const form = reactive({
     cliente_id: "",
@@ -16,13 +29,17 @@ const form = reactive({
     event_date: "",
     guests: 1,
     subtotal: 0,
-    tax: 0,
-    total: 0,
     status: "pendiente",
     notes: "",
 });
 
 const isEditing = computed(() => Boolean(editingId.value));
+
+const subtotalPreview = computed(() => roundMoney(form.subtotal));
+const taxPreview = computed(() => roundMoney(subtotalPreview.value * 0.12));
+const totalPreview = computed(() =>
+    roundMoney(subtotalPreview.value + taxPreview.value),
+);
 
 const statusClasses = {
     pendiente: "bg-amber-50 text-amber-700",
@@ -31,20 +48,18 @@ const statusClasses = {
     rechazada: "bg-red-50 text-red-700",
 };
 
+function roundMoney(value) {
+    return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function formatMoney(value) {
+    return `$${Number(value || 0).toFixed(2)}`;
+}
+
 const generateQuoteNumber = () => {
     const timestamp = Date.now().toString().slice(-6);
-    form.quote_number = `COT-${timestamp}`;
+    form.quote_number = `PROP-${timestamp}`;
 };
-
-const calculateTotals = () => {
-    const subtotal = Number(form.subtotal || 0);
-    const tax = Number((subtotal * 0.12).toFixed(2));
-
-    form.tax = tax;
-    form.total = Number((subtotal + tax).toFixed(2));
-};
-
-watch(() => form.subtotal, calculateTotals);
 
 const resetForm = () => {
     editingId.value = null;
@@ -54,8 +69,6 @@ const resetForm = () => {
     form.event_date = "";
     form.guests = 1;
     form.subtotal = 0;
-    form.tax = 0;
-    form.total = 0;
     form.status = "pendiente";
     form.notes = "";
     generateQuoteNumber();
@@ -67,10 +80,8 @@ const fetchClientes = async () => {
 };
 
 const fetchCotizaciones = async () => {
-    loading.value = true;
     const { data } = await api.get("/cotizaciones");
     cotizaciones.value = data.data || data;
-    loading.value = false;
 };
 
 const loadData = async () => {
@@ -82,23 +93,26 @@ const loadData = async () => {
 const submit = async () => {
     saving.value = true;
     error.value = "";
+    success.value = "";
 
     try {
-        calculateTotals();
-
         const payload = {
-            ...form,
             cliente_id: Number(form.cliente_id),
-            guests: Number(form.guests),
-            subtotal: Number(form.subtotal),
-            tax: Number(form.tax),
-            total: Number(form.total),
+            quote_number: form.quote_number,
+            event_type: form.event_type,
+            event_date: form.event_date || null,
+            guests: Number(form.guests || 1),
+            subtotal: subtotalPreview.value,
+            status: form.status,
+            notes: form.notes,
         };
 
         if (isEditing.value) {
             await api.put(`/cotizaciones/${editingId.value}`, payload);
+            success.value = "Propuesta actualizada correctamente.";
         } else {
             await api.post("/cotizaciones", payload);
+            success.value = "Propuesta creada correctamente.";
         }
 
         resetForm();
@@ -106,7 +120,7 @@ const submit = async () => {
     } catch (exception) {
         error.value =
             exception.response?.data?.message ||
-            "No se pudo guardar la cotización.";
+            "No se pudo guardar la propuesta.";
     } finally {
         saving.value = false;
     }
@@ -120,20 +134,86 @@ const editCotizacion = (cotizacion) => {
     form.event_date = cotizacion.event_date || "";
     form.guests = cotizacion.guests || 1;
     form.subtotal = cotizacion.subtotal || 0;
-    form.tax = cotizacion.tax || 0;
-    form.total = cotizacion.total || 0;
     form.status = cotizacion.status || "pendiente";
     form.notes = cotizacion.notes || "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 const deleteCotizacion = async (cotizacion) => {
-    if (!confirm(`Eliminar cotización ${cotizacion.quote_number}?`)) return;
+    if (!confirm(`Eliminar propuesta ${cotizacion.quote_number}?`)) return;
 
     await api.delete(`/cotizaciones/${cotizacion.id}`);
     await fetchCotizaciones();
 };
 
-const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
+const exportCotizacion = async (cotizacion) => {
+    try {
+        const { data } = await api.get(
+            `/cotizaciones/${cotizacion.id}/export`,
+            {
+                responseType: "blob",
+            },
+        );
+
+        const url = window.URL.createObjectURL(new Blob([data]));
+        const link = document.createElement("a");
+        const clientName = cotizacion.cliente?.name || "cliente";
+
+        link.href = url;
+        link.setAttribute(
+            "download",
+            `${cotizacion.quote_number}-${clientName}.xlsx`,
+        );
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (exception) {
+        error.value =
+            exception.response?.data?.message ||
+            "No se pudo exportar la proforma.";
+    }
+};
+
+const exportAllExcel = async () => {
+    try {
+        const { data } = await api.get(
+            `/cotizaciones/${cotizaciones.value[0]?.id}/export`,
+            { responseType: "blob" },
+        );
+
+        const url = window.URL.createObjectURL(new Blob([data]));
+        const link = document.createElement("a");
+        const timestamp = new Date().toISOString().slice(0, 10);
+
+        link.href = url;
+        link.setAttribute(
+            "download",
+            `Propuestas-BarFlowEC-${timestamp}.xlsx`,
+        );
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        toast.value = {
+            message: "Exportación completada correctamente.",
+            type: "success",
+        };
+    } catch (exception) {
+        toast.value = {
+            message: "No se pudo exportar. Intenta de nuevo.",
+            type: "error",
+        };
+    }
+};
+
+watch(
+    () => form.subtotal,
+    () => {
+        form.subtotal = form.subtotal < 0 ? 0 : form.subtotal;
+    },
+);
 
 onMounted(async () => {
     generateQuoteNumber();
@@ -149,10 +229,10 @@ onMounted(async () => {
         >
             <div class="mb-5">
                 <h3 class="text-lg font-bold text-slate-950">
-                    {{ isEditing ? "Editar cotización" : "Nueva cotización" }}
+                    {{ isEditing ? "Editar propuesta" : "Nueva propuesta" }}
                 </h3>
                 <p class="text-sm text-slate-500">
-                    Crea propuestas comerciales para eventos.
+                    Crea una proforma clara para enviar al cliente.
                 </p>
             </div>
 
@@ -179,7 +259,7 @@ onMounted(async () => {
 
                 <div>
                     <label class="text-sm font-semibold text-slate-700"
-                        >Número</label
+                        >Código de propuesta</label
                     >
                     <div class="mt-2 flex gap-2">
                         <input
@@ -210,14 +290,14 @@ onMounted(async () => {
                         <option value="Corporativo">Corporativo</option>
                         <option value="Cumpleaños">Cumpleaños</option>
                         <option value="Recepción">Recepción</option>
-                        <option value="Privado">Privado</option>
+                        <option value="Social">Social</option>
                     </select>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label class="text-sm font-semibold text-slate-700"
-                            >Fecha</label
+                            >Fecha del evento</label
                         >
                         <input
                             v-model="form.event_date"
@@ -241,18 +321,19 @@ onMounted(async () => {
 
                 <div>
                     <label class="text-sm font-semibold text-slate-700"
-                        >Subtotal</label
+                        >Subtotal USD</label
                     >
                     <input
                         v-model="form.subtotal"
                         type="number"
                         min="0"
                         step="0.01"
+                        required
                         class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-purple-500"
                     />
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div class="rounded-xl bg-slate-50 p-4">
                         <p
                             class="text-xs font-semibold uppercase text-slate-500"
@@ -260,7 +341,7 @@ onMounted(async () => {
                             IVA 12%
                         </p>
                         <p class="mt-1 text-xl font-bold text-slate-950">
-                            {{ formatMoney(form.tax) }}
+                            {{ formatMoney(taxPreview) }}
                         </p>
                     </div>
 
@@ -268,17 +349,17 @@ onMounted(async () => {
                         <p
                             class="text-xs font-semibold uppercase text-purple-600"
                         >
-                            Total
+                            Total proforma
                         </p>
                         <p class="mt-1 text-xl font-bold text-purple-700">
-                            {{ formatMoney(form.total) }}
+                            {{ formatMoney(totalPreview) }}
                         </p>
                     </div>
                 </div>
 
                 <div>
                     <label class="text-sm font-semibold text-slate-700"
-                        >Estado</label
+                        >Estado comercial</label
                     >
                     <select
                         v-model="form.status"
@@ -293,7 +374,7 @@ onMounted(async () => {
 
                 <div>
                     <label class="text-sm font-semibold text-slate-700"
-                        >Notas</label
+                        >Notas para la propuesta</label
                     >
                     <textarea
                         v-model="form.notes"
@@ -310,7 +391,14 @@ onMounted(async () => {
                 {{ error }}
             </p>
 
-            <div class="mt-6 flex gap-3">
+            <p
+                v-if="success"
+                class="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            >
+                {{ success }}
+            </p>
+
+            <div class="mt-6 flex flex-col gap-3 sm:flex-row">
                 <button
                     type="submit"
                     class="rounded-xl bg-purple-600 px-5 py-3 text-sm font-bold text-white hover:bg-purple-700"
@@ -320,8 +408,8 @@ onMounted(async () => {
                         saving
                             ? "Guardando..."
                             : isEditing
-                              ? "Actualizar"
-                              : "Crear"
+                              ? "Actualizar propuesta"
+                              : "Crear propuesta"
                     }}
                 </button>
 
@@ -337,83 +425,95 @@ onMounted(async () => {
         </form>
 
         <article class="rounded-2xl bg-white p-6 shadow-sm">
-            <div class="mb-5 flex items-center justify-between">
-                <h3 class="text-lg font-bold text-slate-950">Cotizaciones</h3>
-                <span class="text-sm font-semibold text-slate-400"
-                    >{{ cotizaciones.length }} registros</span
+            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <h3 class="text-lg font-bold text-slate-950">Propuestas</h3>
+                    <span class="text-sm font-semibold text-slate-400"
+                        >{{ cotizaciones.length }} registros</span
+                    >
+                </div>
+
+                <!-- Botón Exportar Excel visible siempre -->
+                <button
+                    v-if="cotizaciones.length > 0"
+                    class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700"
+                    @click="exportAllExcel"
                 >
+                    <span>📊</span>
+                    Exportar todo Excel
+                </button>
             </div>
 
-            <div v-if="loading" class="py-10 text-center text-slate-500">
-                Cargando cotizaciones...
-            </div>
-
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-slate-500">
-                            <th class="py-3 font-semibold">Número</th>
-                            <th class="py-3 font-semibold">Cliente</th>
-                            <th class="py-3 font-semibold">Evento</th>
-                            <th class="py-3 font-semibold">Total</th>
-                            <th class="py-3 font-semibold">Estado</th>
-                            <th class="py-3 text-right font-semibold">
-                                Acciones
-                            </th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <tr
-                            v-for="cotizacion in cotizaciones"
-                            :key="cotizacion.id"
-                            class="border-b border-slate-50"
-                        >
-                            <td class="py-4 font-bold text-slate-900">
-                                {{ cotizacion.quote_number }}
-                            </td>
-                            <td class="py-4 text-slate-600">
-                                {{ cotizacion.cliente?.name || "Sin cliente" }}
-                            </td>
-                            <td class="py-4 text-slate-600">
-                                <p>{{ cotizacion.event_type || "-" }}</p>
-                                <p class="text-xs text-slate-400">
-                                    {{ cotizacion.event_date || "Sin fecha" }} ·
-                                    {{ cotizacion.guests }} invitados
-                                </p>
-                            </td>
-                            <td class="py-4 font-semibold text-slate-900">
-                                {{ formatMoney(cotizacion.total) }}
-                            </td>
-                            <td class="py-4">
-                                <span
-                                    class="rounded-full px-3 py-1 text-xs font-bold"
-                                    :class="
-                                        statusClasses[cotizacion.status] ||
-                                        'bg-slate-100 text-slate-700'
-                                    "
-                                >
-                                    {{ cotizacion.status }}
-                                </span>
-                            </td>
-                            <td class="py-4 text-right">
-                                <button
-                                    class="mr-2 rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
-                                    @click="editCotizacion(cotizacion)"
-                                >
-                                    Editar
-                                </button>
-                                <button
-                                    class="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100"
-                                    @click="deleteCotizacion(cotizacion)"
-                                >
-                                    Eliminar
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <ProTable
+                :columns="columns"
+                :rows="cotizaciones"
+                :loading="loading"
+                empty-message="No hay propuestas registradas."
+                empty-icon="📄"
+            >
+                <template #cell-cliente="{ row }">
+                    <span class="text-slate-600">
+                        {{ row.cliente?.name || "Sin cliente" }}
+                    </span>
+                </template>
+                <template #cell-evento="{ row }">
+                    <div>
+                        <p>{{ row.event_type || "-" }}</p>
+                        <p class="text-xs text-slate-400">
+                            {{ row.event_date || "Sin fecha" }} ·
+                            {{ row.guests }} inv.
+                        </p>
+                    </div>
+                </template>
+                <template #cell-subtotal="{ value }">
+                    <span class="font-semibold text-slate-900">
+                        {{ formatMoney(value) }}
+                    </span>
+                </template>
+                <template #cell-total="{ value }">
+                    <span class="font-bold text-slate-950">
+                        {{ formatMoney(value) }}
+                    </span>
+                </template>
+                <template #cell-status="{ row }">
+                    <span
+                        class="rounded-full px-3 py-1 text-xs font-bold"
+                        :class="
+                            statusClasses[row.status] ||
+                            'bg-slate-100 text-slate-700'
+                        "
+                    >
+                        {{ row.status }}
+                    </span>
+                </template>
+                <template #actions="{ row }">
+                    <button
+                        class="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                        title="Exportar a Excel"
+                        @click="exportCotizacion(row)"
+                    >
+                        📊 Excel
+                    </button>
+                    <button
+                        class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        @click="editCotizacion(row)"
+                    >
+                        Editar
+                    </button>
+                    <button
+                        class="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-100"
+                        @click="deleteCotizacion(row)"
+                    >
+                        Eliminar
+                    </button>
+                </template>
+            </ProTable>
         </article>
     </section>
+
+    <ToastNotification
+        :message="toast.message"
+        :type="toast.type"
+        @close="toast.message = ''"
+    />
 </template>

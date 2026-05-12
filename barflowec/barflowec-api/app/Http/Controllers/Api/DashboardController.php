@@ -15,7 +15,7 @@ class DashboardController extends Controller
     public function index(): JsonResponse
     {
         $clientesCount = Cliente::count();
-        $cotizacionesCount = Cotizacion::count();
+        $propuestasCount = Cotizacion::count();
 
         $eventosActivosCount = Evento::whereIn('status', [
             'programado',
@@ -23,21 +23,48 @@ class DashboardController extends Controller
             'en_proceso',
         ])->count();
 
-        $pagosPendientesCount = Pago::where('status', 'pendiente')->count();
-        $pagosPendientesTotal = Pago::where('status', 'pendiente')->sum('amount');
-        $ingresosPagados = Pago::where('status', 'pagado')->sum('amount');
+        $ingresosCobrados = Pago::where('status', 'pagado')->sum('amount');
 
-        $recentQuotes = Cotizacion::with('cliente')
+        $saldoPendiente = Cotizacion::with('pagos')
+            ->get()
+            ->sum(function (Cotizacion $cotizacion) {
+                $pagado = $cotizacion->pagos
+                    ->where('status', 'pagado')
+                    ->sum('amount');
+
+                return max(((float) $cotizacion->total) - ((float) $pagado), 0);
+            });
+
+        $cobrosPendientesCount = Cotizacion::with('pagos')
+            ->get()
+            ->filter(function (Cotizacion $cotizacion) {
+                $pagado = $cotizacion->pagos
+                    ->where('status', 'pagado')
+                    ->sum('amount');
+
+                return (((float) $cotizacion->total) - ((float) $pagado)) > 0;
+            })
+            ->count();
+
+        $recentQuotes = Cotizacion::with(['cliente', 'pagos'])
             ->latest()
             ->take(5)
             ->get()
             ->map(function (Cotizacion $cotizacion) {
+                $paid = $cotizacion->pagos
+                    ->where('status', 'pagado')
+                    ->sum('amount');
+
+                $balance = max(((float) $cotizacion->total) - ((float) $paid), 0);
+
                 return [
                     'id' => $cotizacion->id,
                     'code' => $cotizacion->quote_number,
                     'client' => $cotizacion->cliente?->name ?? 'Sin cliente',
                     'event_type' => $cotizacion->event_type ?? '-',
                     'amount' => (float) $cotizacion->total,
+                    'paid' => (float) $paid,
+                    'balance' => (float) $balance,
                     'status' => $cotizacion->status,
                     'created_at' => $cotizacion->created_at?->format('Y-m-d'),
                 ];
@@ -53,7 +80,7 @@ class DashboardController extends Controller
                     'name' => $evento->name,
                     'date' => $evento->event_date,
                     'location' => $evento->location ?? '-',
-                    'bartender' => $evento->bartender_name ?? 'Por asignar',
+                    'responsible' => $evento->bartender_name ?? 'Por asignar',
                 ];
             });
 
@@ -66,27 +93,27 @@ class DashboardController extends Controller
                     'color' => 'purple',
                 ],
                 [
-                    'label' => 'Cotizaciones',
-                    'value' => $cotizacionesCount,
-                    'change' => 'totales',
+                    'label' => 'Propuestas',
+                    'value' => $propuestasCount,
+                    'change' => 'comerciales',
                     'color' => 'green',
                 ],
                 [
-                    'label' => 'Eventos activos',
+                    'label' => 'Eventos en agenda',
                     'value' => $eventosActivosCount,
-                    'change' => 'programados',
+                    'change' => 'activos',
                     'color' => 'yellow',
                 ],
                 [
-                    'label' => 'Pagos pendientes',
-                    'value' => $pagosPendientesCount,
-                    'change' => '$' . number_format($pagosPendientesTotal, 2),
+                    'label' => 'Saldos pendientes',
+                    'value' => $cobrosPendientesCount,
+                    'change' => '$' . number_format($saldoPendiente, 2),
                     'color' => 'red',
                 ],
             ],
             'income' => [
-                'paid' => (float) $ingresosPagados,
-                'pending' => (float) $pagosPendientesTotal,
+                'paid' => (float) $ingresosCobrados,
+                'pending' => (float) $saldoPendiente,
             ],
             'recent_quotes' => $recentQuotes,
             'upcoming_events' => $upcomingEvents,
