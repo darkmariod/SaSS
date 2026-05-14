@@ -1,0 +1,18 @@
+{
+  "name": "barflowec",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n api,web -c \"#7c3aed,#06b6d4\" \"cd barflowec-api && php artisan serve\" \"cd barflowec-web && npx vite\"",
+    "dev:api": "cd barflowec-api && php artisan serve",
+    "dev:web": "cd barflowec-web && npx vite",
+    "test": "npm run test:api && npm run test:web",
+    "test:api": "cd barflowec-api && php artisan test",
+    "test:web": "cd barflowec-web && npx vitest run",
+    "setup": "cd barflowec-api && composer install && cp .env.example .env 2>/dev/null; php artisan key:generate && php artisan migrate && npm ci && cd ../barflowec-web && npm ci",
+    "build": "cd barflowec-web && npm run build",
+    "seed": "cd barflowec-api && php artisan barflow:demo"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
