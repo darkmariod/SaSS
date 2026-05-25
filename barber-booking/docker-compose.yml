@@ -1,0 +1,136 @@
+# =============================================================================
+# Docker Compose for Dokploy — Barber Booking App
+# =============================================================================
+# Uso: Dokploy parsea este archivo automáticamente.
+# Seteá TODAS las variables de entorno desde la UI de Dokploy
+# (Project → Environment Variables).
+# =============================================================================
+
+services:
+  # ─────────────────────────────────────────────
+  # PHP-FPM (Laravel Runtime)
+  # ─────────────────────────────────────────────
+  php-fpm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: php-fpm
+    container_name: barber-booking-php
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - app-storage:/var/www/storage
+    entrypoint: ["/var/www/docker/startup.sh"]
+    networks:
+      - barber-network
+    healthcheck:
+      test: ["CMD", "php", "-v"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ─────────────────────────────────────────────
+  # Nginx (Web Server)
+  # ─────────────────────────────────────────────
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: nginx
+    container_name: barber-booking-nginx
+    restart: unless-stopped
+    depends_on:
+      - php-fpm
+    ports:
+      - "80:80"
+    volumes:
+      - app-storage:/var/www/storage:ro
+    networks:
+      - barber-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ─────────────────────────────────────────────
+  # Queue Worker
+  # ─────────────────────────────────────────────
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: php-fpm
+    container_name: barber-booking-queue
+    restart: unless-stopped
+    depends_on:
+      php-fpm:
+        condition: service_healthy
+    volumes:
+      - app-storage:/var/www/storage
+    command: >
+      php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    networks:
+      - barber-network
+    healthcheck:
+      disable: true
+
+  # ─────────────────────────────────────────────
+  # Scheduler (Cron)
+  # ─────────────────────────────────────────────
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: php-fpm
+    container_name: barber-booking-scheduler
+    restart: unless-stopped
+    depends_on:
+      php-fpm:
+        condition: service_healthy
+    volumes:
+      - app-storage:/var/www/storage
+    command: >
+      php artisan schedule:work
+    networks:
+      - barber-network
+    healthcheck:
+      disable: true
+
+  # ─────────────────────────────────────────────
+  # MySQL Database
+  # ─────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: barber-booking-mysql
+    restart: unless-stopped
+    volumes:
+      - mysql-data:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: barber_booking
+      MYSQL_USER: barber
+      MYSQL_PASSWORD: ${DB_PASSWORD?Variable DB_PASSWORD requerida}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD?Variable MYSQL_ROOT_PASSWORD requerida}
+    networks:
+      - barber-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+networks:
+  barber-network:
+    name: barber-booking-network
+    driver: bridge
+
+volumes:
+  app-storage:
+    name: barber-booking-storage
+  mysql-data:
+    name: barber-booking-mysql-data

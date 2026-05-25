@@ -182,6 +182,12 @@ class BarberShopResource extends Resource
 
                 Section::make('Configuración')
                     ->schema([
+                        Select::make('owner_id')
+                            ->label('Dueño')
+                            ->relationship('owner', 'name')
+                            ->searchable()
+                            ->required()
+                            ->visible(fn (): bool => auth()->user()?->hasRole('admin') ?? false),
                         Toggle::make('is_active')
                             ->label('Activo')
                             ->default(true),

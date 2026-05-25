@@ -71,6 +71,9 @@ COPY . .
 # Copy compiled assets from node-builder stage
 COPY --from=node-builder /app/public/build ./public/build
 
+# Copy production PHP configuration
+COPY docker/php.ini /usr/local/etc/php/conf.d/production.ini
+
 # Set proper permissions for storage and bootstrap/cache
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
