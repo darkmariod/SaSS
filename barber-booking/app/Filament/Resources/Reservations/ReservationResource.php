@@ -12,6 +12,7 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
@@ -167,12 +168,19 @@ class ReservationResource extends Resource
 
                 Section::make('Comprobante de pago')
                     ->schema([
+                        ImageEntry::make('detail.receipt_image')
+                            ->label('Comprobante')
+                            ->disk('public')
+                            ->width(400)
+                            ->visible(fn (Reservation $record): bool => filled($record->detail?->receipt_image)),
+
                         TextEntry::make('detail.receipt_image')
                             ->label('Archivo')
-                            ->placeholder('Sin comprobante'),
+                            ->placeholder('Sin comprobante')
+                            ->visible(fn (Reservation $record): bool => ! filled($record->detail?->receipt_image)),
 
                         TextEntry::make('receipt_link')
-                            ->label('Ver comprobante')
+                            ->label('Descargar comprobante')
                             ->state(function (Reservation $record): string {
                                 if (! $record->detail?->receipt_image) {
                                     return 'Sin comprobante';
@@ -187,7 +195,8 @@ class ReservationResource extends Resource
 
                                 return asset('storage/' . $record->detail->receipt_image);
                             })
-                            ->openUrlInNewTab(),
+                            ->openUrlInNewTab()
+                            ->visible(fn (Reservation $record): bool => filled($record->detail?->receipt_image)),
                     ]),
             ]);
     }
