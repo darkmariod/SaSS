@@ -404,13 +404,14 @@ export function useBookingWizard(props, preselectedBarber = null) {
             });
 
             createdReservation.value = response.data.reservation;
-            successMessage.value =
-                response.data.message || "Reserva creada correctamente.";
+            successMessage.value = "¡Su cita ha sido reservada con éxito!";
             step.value = "confirmation";
 
-            setTimeout(() => {
-                window.location.href = "/barberia/" + props.shop.slug;
-            }, 3000);
+            if (paymentOption.value === "at_appointment") {
+                setTimeout(() => {
+                    window.location.href = "/";
+                }, 2000);
+            }
         } catch (error) {
             errorMessage.value =
                 error.response?.data?.message || "No se pudo crear la reserva.";
@@ -472,6 +473,10 @@ export function useBookingWizard(props, preselectedBarber = null) {
             receiptUrl.value = response.data.receipt_url || "";
             successMessage.value =
                 response.data.message || "Comprobante subido correctamente.";
+
+            setTimeout(() => {
+                window.location.href = "/";
+            }, 2000);
         } catch (error) {
             errorMessage.value =
                 error.response?.data?.message ||
