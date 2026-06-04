@@ -25,7 +25,10 @@ Route::middleware(['auth', 'role:barber'])->group(function () {
 });
 
 // Rutas públicas de reserva (AJAX / Inertia - En web.php para que Inertia las encuentre)
-Route::get('/barberia/{slug}', [PublicBookingController::class, 'show'])
+Route::get('/barberia/{slug}', [PublicBookingController::class, 'shop'])
+    ->name('public.shop.show');
+
+Route::get('/barberia/{slug}/reservar', [PublicBookingController::class, 'show'])
     ->name('public.booking.show');
 
 Route::post('/barberia/availability/check', [PublicBookingController::class, 'availability'])

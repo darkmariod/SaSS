@@ -22,6 +22,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
     const errorMessage = ref("");
     const successMessage = ref("");
     const createdReservation = ref(null);
+    const reservationCreated = ref(false);
 
     const receiptFile = ref(null);
     const receiptPreview = ref("");
@@ -121,14 +122,6 @@ export function useBookingWizard(props, preselectedBarber = null) {
 
     const canContinueFromServices = computed(() => {
         return Boolean(selectedMainService.value);
-    });
-
-    const canContinueFromOptions = computed(() => {
-        if (serviceOptions.value.length === 0) {
-            return Boolean(selectedMainService.value);
-        }
-
-        return Boolean(selectedServiceOption.value);
     });
 
     const canContinueFromStaff = computed(() => {
@@ -237,39 +230,13 @@ export function useBookingWizard(props, preselectedBarber = null) {
         successMessage.value = "";
     };
 
-    const goToOptions = () => {
+    const goToStaff = () => {
         if (!canContinueFromServices.value) {
             errorMessage.value = "Selecciona un servicio.";
             return;
         }
 
         errorMessage.value = "";
-
-        if (serviceOptions.value.length === 0) {
-            if (canContinueFromStaff.value) {
-                step.value = "schedule";
-            } else {
-                step.value = "staff";
-            }
-            return;
-        }
-
-        step.value = "options";
-    };
-
-    const goToStaff = () => {
-        if (!canContinueFromOptions.value) {
-            errorMessage.value = "Selecciona una opción del servicio.";
-            return;
-        }
-
-        errorMessage.value = "";
-
-        if (canContinueFromStaff.value) {
-            step.value = "schedule";
-            return;
-        }
-
         step.value = "staff";
     };
 
@@ -283,14 +250,14 @@ export function useBookingWizard(props, preselectedBarber = null) {
         step.value = "schedule";
     };
 
-    const goToContact = () => {
+    const goToCheckout = () => {
         if (!canContinueFromSchedule.value) {
             errorMessage.value = "Selecciona fecha y hora.";
             return;
         }
 
         errorMessage.value = "";
-        step.value = "contact";
+        step.value = "checkout";
     };
 
     const loadAvailability = async () => {
@@ -405,7 +372,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
 
             createdReservation.value = response.data.reservation;
             successMessage.value = "¡Su cita ha sido reservada con éxito!";
-            step.value = "confirmation";
+            reservationCreated.value = true;
 
             if (paymentOption.value === "at_appointment") {
                 setTimeout(() => {
@@ -504,6 +471,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
         errorMessage.value = "";
         successMessage.value = "";
         createdReservation.value = null;
+        reservationCreated.value = false;
         paymentOption.value = "at_appointment";
 
         customer.value = {
@@ -566,6 +534,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
         errorMessage,
         successMessage,
         createdReservation,
+        reservationCreated,
 
         receiptFile,
         receiptPreview,
@@ -588,7 +557,6 @@ export function useBookingWizard(props, preselectedBarber = null) {
         today,
 
         canContinueFromServices,
-        canContinueFromOptions,
         canContinueFromStaff,
         canContinueFromSchedule,
         canCreateReservation,
@@ -600,10 +568,9 @@ export function useBookingWizard(props, preselectedBarber = null) {
         selectBarber,
 
         goToServices,
-        goToOptions,
         goToStaff,
         goToSchedule,
-        goToContact,
+        goToCheckout,
 
         loadAvailability,
 

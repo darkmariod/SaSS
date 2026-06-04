@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'csrf' => \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
         ]);
     })

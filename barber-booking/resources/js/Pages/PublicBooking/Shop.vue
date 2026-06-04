@@ -7,11 +7,9 @@ import BookingLayout from "@/Components/PublicBooking/BookingLayout.vue";
 import BookingSummary from "@/Components/PublicBooking/BookingSummary.vue";
 
 import StepServices from "@/Components/PublicBooking/StepServices.vue";
-import StepServiceOptions from "@/Components/PublicBooking/StepServiceOptions.vue";
 import StepStaff from "@/Components/PublicBooking/StepStaff.vue";
 import StepSchedule from "@/Components/PublicBooking/StepSchedule.vue";
-import StepContact from "@/Components/PublicBooking/StepContact.vue";
-import StepConfirmation from "@/Components/PublicBooking/StepConfirmation.vue";
+import StepCheckout from "@/Components/PublicBooking/StepCheckout.vue";
 
 const props = defineProps({
     shop: {
@@ -36,11 +34,9 @@ const wizard = useBookingWizard(props, props.preselectedBarber);
 
 const steps = [
     { key: "services", label: "Servicio", icon: "1" },
-    { key: "options", label: "Opciones", icon: "2" },
-    { key: "staff", label: "Barbero", icon: "3" },
-    { key: "schedule", label: "Horario", icon: "4" },
-    { key: "contact", label: "Datos", icon: "5" },
-    { key: "confirmation", label: "Listo", icon: "6" },
+    { key: "staff", label: "Barbero", icon: "2" },
+    { key: "schedule", label: "Horario", icon: "3" },
+    { key: "checkout", label: "Confirmar", icon: "4" },
 ];
 
 const currentStepIndex = computed(() => {
@@ -55,7 +51,7 @@ const currentStepIndex = computed(() => {
         <section>
             <!-- Step Progress Indicator (hidden on confirmation) -->
             <div
-                v-if="wizard.step.value !== 'confirmation'"
+                v-if="wizard.step.value !== 'checkout' || !wizard.reservationCreated.value"
                 class="mb-8"
             >
                 <div class="flex items-center justify-center gap-0 sm:gap-2">
@@ -160,12 +156,6 @@ const currentStepIndex = computed(() => {
                     :wizard="wizard"
                 />
 
-                <StepServiceOptions
-                    v-else-if="wizard.step.value === 'options'"
-                    :key="'options'"
-                    :wizard="wizard"
-                />
-
                 <StepStaff
                     v-else-if="wizard.step.value === 'staff'"
                     :key="'staff'"
@@ -179,23 +169,17 @@ const currentStepIndex = computed(() => {
                     :wizard="wizard"
                 />
 
-                <StepContact
-                    v-else-if="wizard.step.value === 'contact'"
-                    :key="'contact'"
+                <StepCheckout
+                    v-else-if="wizard.step.value === 'checkout'"
+                    :key="'checkout'"
                     :wizard="wizard"
                     :shop="shop"
-                />
-
-                <StepConfirmation
-                    v-else-if="wizard.step.value === 'confirmation'"
-                    :key="'confirmation'"
-                    :wizard="wizard"
                 />
             </Transition>
         </section>
 
         <BookingSummary
-            v-if="wizard.step.value !== 'confirmation'"
+            v-if="wizard.step.value !== 'checkout' || !wizard.reservationCreated.value"
             :wizard="wizard"
         />
     </BookingLayout>

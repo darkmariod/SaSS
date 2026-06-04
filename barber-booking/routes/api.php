@@ -1,14 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PublicBookingController;
-
-// Rutas públicas para reservas (API/JSON)
-Route::post('/barberia/availability/check', [PublicBookingController::class, 'availability'])
-    ->name('public.booking.availability');
-
-Route::post('/barberia/reservations', [PublicBookingController::class, 'store'])
-    ->name('public.booking.store');
-
-Route::post('/barberia/reservations/{reservation}/receipt', [PublicBookingController::class, 'uploadReceipt'])
-    ->name('public.booking.receipt');
+// Rutas públicas de booking están en routes/web.php
+// con ->withoutMiddleware(['csrf']) para que funcionen sin autenticación.
+// Este archivo queda reservado para futuros endpoints puramente API.

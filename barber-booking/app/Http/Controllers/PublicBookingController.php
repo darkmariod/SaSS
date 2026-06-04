@@ -55,6 +55,40 @@ class PublicBookingController extends Controller
         ]);
     }
 
+    public function shop(string $slug, Request $request): Response
+    {
+        $shop = BarberShop::query()
+            ->where('slug', $slug)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $services = $shop->services()
+            ->where('is_active', true)
+            ->orderBy('category')
+            ->orderBy('service_type')
+            ->orderBy('sort_order')
+            ->orderBy('price')
+            ->get();
+
+        $barbers = $shop->barbers()
+            ->with('user:id,name,email,phone')
+            ->where('is_active', true)
+            ->get();
+
+        // ?b=barber_profile_id → pre-seleccionar barbero
+        $preselectedBarber = null;
+        if ($request->has('b')) {
+            $preselectedBarber = $barbers->firstWhere('id', (int) $request->b);
+        }
+
+        return Inertia::render('PublicShop/Index', [
+            'shop' => $shop,
+            'services' => $services,
+            'barbers' => $barbers,
+            'preselectedBarber' => $preselectedBarber,
+        ]);
+    }
+
     public function availability(Request $request): JsonResponse
     {
         $data = $request->validate([
