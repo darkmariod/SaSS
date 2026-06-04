@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'google' => [
+        'calendar_enabled' => env('GOOGLE_CALENDAR_ENABLED', false),
+        'calendar_credentials' => env('GOOGLE_CALENDAR_CREDENTIALS'),
+        'calendar_id' => env('GOOGLE_CALENDAR_ID', 'primary'),
+    ],
+
 ];

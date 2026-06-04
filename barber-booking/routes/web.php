@@ -43,6 +43,10 @@ Route::post('/barberia/reservations/{reservation}/receipt', [PublicBookingContro
     ->name('public.booking.receipt')
     ->withoutMiddleware(['csrf']);
 
+// API para el calendario interno de Filament
+Route::get('/api/calendar/events', [App\Http\Controllers\CalendarController::class, 'events'])
+    ->middleware('auth');
+
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');

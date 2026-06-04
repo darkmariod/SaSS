@@ -351,9 +351,17 @@ class PublicBookingController extends Controller
             ]);
         });
 
-        // Disparar notificación por email al dueño
+        // Disparar notificación por email al dueño y al cliente
+        $emailSent = false;
         try {
-            Mail::to($shop->owner->email)->send(new ReservationNotification($reservation));
+            $mail = new ReservationNotification($reservation);
+            Mail::to($shop->owner->email)->send($mail);
+            $emailSent = true;
+
+            // Si el cliente dejó email, también se lo enviamos
+            if ($reservation->customer_email) {
+                Mail::to($reservation->customer_email)->send($mail);
+            }
         } catch (\Exception $e) {
             \Log::error('Error sending reservation email: ' . $e->getMessage());
         }

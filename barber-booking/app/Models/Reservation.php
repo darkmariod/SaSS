@@ -14,6 +14,7 @@ class Reservation extends Model
         'service_id',
         'addon_service_id',
         'transfer_id',
+        'google_event_id',
         'user_id',
         'consultant_id',
         'customer_name',

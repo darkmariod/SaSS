@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Reservation;
+use App\Services\ICalService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -42,6 +43,19 @@ class ReservationNotification extends Mailable implements ShouldQueue
 
     public function attachments(): array
     {
-        return [];
+        try {
+            $ical = app(ICalService::class);
+            $content = $ical->generate($this->reservation);
+
+            return [
+                \Illuminate\Mail\Attachment::fromData(
+                    fn () => $content,
+                    'reserva-' . $this->reservation->id . '.ics'
+                )->withMime('text/calendar; charset=utf-8; method=PUBLISH'),
+            ];
+        } catch (\Exception $e) {
+            report($e);
+            return [];
+        }
     }
 }
