@@ -1,31 +1,44 @@
 # Dockerfile for Barber Booking App - Dokploy Deployment
-# Multistage build: node-builder → php-fpm → nginx
+# Multistage build: vendor → assets → php-fpm → nginx
 
 ARG PHP_VERSION=8.2
-ARG NODE_VERSION=25
 
 # ─────────────────────────────────────────────
-# Stage 1: Node Builder (Compile Vue/Vite Assets)
+# Stage 1: Vendor — Composer dependencies
 # ─────────────────────────────────────────────
-FROM node:${NODE_VERSION}-alpine AS node-builder
+FROM composer:latest AS vendor
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files first (leverage Docker cache)
-COPY package*.json ./
+COPY composer.json composer.lock ./
 
-# Install Node dependencies
+RUN composer install \
+    --no-dev \
+    --no-interaction \
+    --no-scripts \
+    --no-progress \
+    --optimize-autoloader
+
+# ─────────────────────────────────────────────
+# Stage 2: Assets — Build Vue/Vite with Node
+# ─────────────────────────────────────────────
+FROM node:25-alpine AS assets
+
+WORKDIR /app
+
+# Copy package files (leverage cache)
+COPY package*.json ./
 RUN npm ci
 
-# Copy all source code
+# Copy source + vendor (needed for ziggy import)
 COPY . .
+COPY --from=vendor /app/vendor ./vendor
 
 # Build assets with Vite
 RUN npm run build
 
 # ─────────────────────────────────────────────
-# Stage 2: PHP-FPM (Laravel Runtime)
+# Stage 3: PHP-FPM (Laravel Runtime)
 # ─────────────────────────────────────────────
 FROM php:${PHP_VERSION}-fpm-alpine AS php-fpm
 
@@ -59,17 +72,20 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory for Laravel
 WORKDIR /var/www
 
-# Copy composer files first (leverage Docker cache)
+# Copy vendor from vendor stage
+COPY --from=vendor /app/vendor ./vendor
+
+# Copy composer files for autoloader
 COPY composer.json composer.lock ./
 
-# Install PHP dependencies (no dev for production)
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Dump autoloader with the correct vendor path
+RUN composer dump-autoload --no-dev --optimize
 
 # Copy the rest of the application
 COPY . .
 
-# Copy compiled assets from node-builder stage
-COPY --from=node-builder /app/public/build ./public/build
+# Copy compiled assets from assets stage
+COPY --from=assets /app/public/build ./public/build
 
 # Copy production PHP configuration
 COPY docker/php.ini /usr/local/etc/php/conf.d/production.ini
@@ -82,7 +98,7 @@ RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
 EXPOSE 9000
 
 # ─────────────────────────────────────────────
-# Stage 3: Nginx (Web Server - Final Stage)
+# Stage 4: Nginx (Web Server - Final Stage)
 # ─────────────────────────────────────────────
 FROM nginx:alpine AS nginx
 
