@@ -35,7 +35,7 @@ RUN apk add --no-cache \
     unzip \
     curl \
     libpng-dev \
-    libonig-dev \
+    oniguruma-dev \
     libxml2-dev \
     libzip-dev \
     postgresql-dev \
