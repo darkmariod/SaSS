@@ -25,6 +25,9 @@ php artisan view:cache
 echo "=== [Laravel] Cacheando eventos ==="
 php artisan event:cache
 
+# ── Asegurar que SQLite existe (para cache locks si usa database driver) ──
+touch database/database.sqlite
+
 # ── Migraciones (solo si la base de datos responde) ──
 echo "=== [Laravel] Corriendo migraciones ==="
 php artisan migrate --force --isolated
