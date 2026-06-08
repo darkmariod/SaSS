@@ -6,14 +6,7 @@ ARG PHP_VERSION=8.2
 # ─────────────────────────────────────────────
 # Stage 1: Vendor — Composer dependencies
 # ─────────────────────────────────────────────
-FROM php:8.2-cli-alpine AS vendor
-
-# Install required extensions and git for composer
-RUN apk add --no-cache git unzip curl icu-dev \
-    && docker-php-ext-install intl pcntl
-
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+FROM composer:latest AS vendor
 
 WORKDIR /app
 
@@ -24,7 +17,9 @@ RUN composer install \
     --no-interaction \
     --no-scripts \
     --no-progress \
-    --optimize-autoloader
+    --optimize-autoloader \
+    --ignore-platform-req=ext-* \
+    --ignore-platform-req=php
 
 # ─────────────────────────────────────────────
 # Stage 2: Assets — Build Vue/Vite with Node
