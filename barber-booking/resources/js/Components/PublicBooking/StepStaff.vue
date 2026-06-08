@@ -16,11 +16,7 @@ defineProps({
         <button
             type="button"
             class="mb-8 inline-flex items-center gap-2 text-lg font-black text-gray-600 hover:text-gray-950"
-            @click="
-                wizard.step.value = wizard.serviceOptions.value.length
-                    ? 'options'
-                    : 'services'
-            "
+            @click="wizard.step.value = 'services'"
         >
             ← Servicio
         </button>

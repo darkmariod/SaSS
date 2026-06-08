@@ -11,6 +11,7 @@ const form = useForm({
     email: '',
     password: '',
     password_confirmation: '',
+    shop_name: '',
 });
 
 const submit = () => {
@@ -26,8 +27,7 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="name" value="Name" />
-
+                <InputLabel for="name" value="Tu nombre" />
                 <TextInput
                     id="name"
                     type="text"
@@ -37,13 +37,24 @@ const submit = () => {
                     autofocus
                     autocomplete="name"
                 />
-
                 <InputError class="mt-2" :message="form.errors.name" />
             </div>
 
             <div class="mt-4">
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="shop_name" value="Nombre de tu barbería" />
+                <TextInput
+                    id="shop_name"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.shop_name"
+                    required
+                    placeholder="Ej: Barbería El Clásico"
+                />
+                <InputError class="mt-2" :message="form.errors.shop_name" />
+            </div>
 
+            <div class="mt-4">
+                <InputLabel for="email" value="Email" />
                 <TextInput
                     id="email"
                     type="email"
@@ -52,13 +63,11 @@ const submit = () => {
                     required
                     autocomplete="username"
                 />
-
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="Password" />
-
+                <InputLabel for="password" value="Contraseña" />
                 <TextInput
                     id="password"
                     type="password"
@@ -67,16 +76,14 @@ const submit = () => {
                     required
                     autocomplete="new-password"
                 />
-
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
 
             <div class="mt-4">
                 <InputLabel
                     for="password_confirmation"
-                    value="Confirm Password"
+                    value="Confirmar contraseña"
                 />
-
                 <TextInput
                     id="password_confirmation"
                     type="password"
@@ -85,7 +92,6 @@ const submit = () => {
                     required
                     autocomplete="new-password"
                 />
-
                 <InputError
                     class="mt-2"
                     :message="form.errors.password_confirmation"
@@ -97,7 +103,7 @@ const submit = () => {
                     :href="route('login')"
                     class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 >
-                    Already registered?
+                    ¿Ya tenés cuenta?
                 </Link>
 
                 <PrimaryButton
@@ -105,7 +111,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Register
+                    Registrarme
                 </PrimaryButton>
             </div>
         </form>

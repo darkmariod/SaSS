@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'csrf' => \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'subscription' => \App\Http\Middleware\CheckSubscription::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

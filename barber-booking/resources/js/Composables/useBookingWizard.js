@@ -121,7 +121,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
     });
 
     const canContinueFromServices = computed(() => {
-        return Boolean(selectedMainService.value);
+        return Boolean(bookableService.value);
     });
 
     const canContinueFromStaff = computed(() => {

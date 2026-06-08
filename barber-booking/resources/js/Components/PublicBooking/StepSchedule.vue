@@ -78,11 +78,12 @@ const selectDate = async (iso) => {
                     Otra fecha:
                 </span>
 
-                 <input
-                     v-model="wizard.selectedDate.value"
-                     type="date"
-                     class="min-h-[44px] rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-gray-950 sm:px-4"
-                 />
+                  <input
+                      type="date"
+                      :value="wizard.selectedDate.value"
+                      @change="selectDate($event.target.value)"
+                      class="min-h-[44px] rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-gray-950 sm:px-4"
+                  />
             </div>
         </div>
 

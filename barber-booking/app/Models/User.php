@@ -6,6 +6,7 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -42,6 +43,11 @@ class User extends Authenticatable implements FilamentUser
     public function role(): BelongsTo
     {
         return $this->belongsTo(\App\Models\Role::class, 'role_id');
+    }
+
+    public function barberShop(): HasOne
+    {
+        return $this->hasOne(BarberShop::class, 'owner_id');
     }
 
     public function canAccessPanel(Panel $panel): bool

@@ -5,7 +5,7 @@ import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 </script>
 
 <template>
-    <Head title="BarberBooking EC - Inicio" />
+    <Head title="Booking Ec - Inicio" />
 
     <GuestLayout>
         <div class="min-h-screen flex flex-col items-center justify-center bg-gray-100 py-6 px-4 sm:py-12">
@@ -16,7 +16,7 @@ import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 
             <!-- Título -->
             <h1 class="text-2xl font-bold text-gray-800 mb-2 text-center sm:text-3xl">
-                BarberBooking EC
+                Booking Ec
             </h1>
             <p class="text-gray-600 mb-10 text-center max-w-md">
                 Sistema de reservas para barberías. Agenda tu cita o gestiona tu negocio.

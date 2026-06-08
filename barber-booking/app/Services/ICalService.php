@@ -31,7 +31,7 @@ class ICalService
         $lines = [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
-            'PRODID:-//BarberBooking//ES',
+            'PRODID:-//BookingEc//ES',
             'CALSCALE:GREGORIAN',
             'METHOD:PUBLISH',
             'BEGIN:VEVENT',

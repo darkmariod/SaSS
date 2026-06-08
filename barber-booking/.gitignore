@@ -25,3 +25,8 @@ Thumbs.db
 
 # Google Calendar service account credentials
 storage/app/google-calendar/*.json
+
+# Editor / tooling artifacts
+.atl/
+.windsurf/
+.skill-registry.cache.json

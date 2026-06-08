@@ -16,7 +16,7 @@ const canAccessPanel = computed(() => hasRole('owner') || hasRole('admin') || ha
     <AuthenticatedLayout>
         <template #header>
             <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                BarberBooking EC
+                Booking Ec
             </h2>
         </template>
 
@@ -74,7 +74,7 @@ const canAccessPanel = computed(() => hasRole('owner') || hasRole('admin') || ha
                 <!-- Otros roles -->
                 <div v-else class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                     <div class="p-6 text-gray-900">
-                        Bienvenido a BarberBooking EC.
+                        Bienvenido a Booking Ec.
                     </div>
                 </div>
             </div>

@@ -152,24 +152,9 @@ defineProps({
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             "
             :disabled="!wizard.canContinueFromServices.value"
-            @click="wizard.goToOptions"
-        >
-            Siguiente
-        </button>
-
-        <button
-            v-if="wizard.step.value === 'options'"
-            type="button"
-            class="mt-4 w-full rounded-xl px-6 py-4 text-base font-black transition-all duration-200 ease-in-out sm:text-lg focus:outline-none focus:ring-2 focus:ring-[#d8c59f] focus:ring-offset-2"
-            :class="
-                wizard.canContinueFromOptions.value
-                    ? 'bg-[#d8c59f] text-gray-950 hover:bg-[#cdb88c] hover:shadow-lg active:scale-[0.98] cursor-pointer'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            "
-            :disabled="!wizard.canContinueFromOptions.value"
             @click="wizard.goToStaff"
         >
-            Agregar
+            Siguiente
         </button>
 
         <button
@@ -197,13 +182,13 @@ defineProps({
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             "
             :disabled="!wizard.canContinueFromSchedule.value"
-            @click="wizard.goToContact"
+            @click="wizard.goToCheckout"
         >
             Siguiente
         </button>
 
         <button
-            v-if="wizard.step.value === 'contact'"
+            v-if="wizard.step.value === 'checkout'"
             type="button"
             class="mt-4 w-full rounded-xl px-6 py-4 text-base font-black transition-all duration-200 ease-in-out sm:text-lg focus:outline-none focus:ring-2 focus:ring-[#d8c59f] focus:ring-offset-2"
             :class="

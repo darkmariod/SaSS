@@ -166,7 +166,7 @@ Adentro de Dokploy:
 En la pestaña **Environment Variables** del proyecto, agregá TODO esto:
 
 ```bash
-APP_NAME=BarberBooking
+APP_NAME=BookingEc
 APP_ENV=production
 APP_KEY=base64:aCAxnidrSaGpcEKd7GuPtwWIjlamdbHTn7qWoWVRtGU=
 APP_DEBUG=false

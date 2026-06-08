@@ -3,15 +3,16 @@
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\BarberController;
 
 Route::get('/', function () {
-    // Authenticated → dashboard; otherwise → booking directo
+    // Authenticated → dashboard; otherwise → Linktree de la barbería demo
     if (auth()->check()) {
         return redirect('/dashboard');
     }
-    return redirect()->route('public.booking.show', ['slug' => 'barberia-demo']);
+    return redirect()->route('public.shop.show', ['slug' => 'barberia-demo']);
 });
 
 Route::get('/health', HealthController::class);
@@ -50,5 +51,11 @@ Route::get('/api/calendar/events', [App\Http\Controllers\CalendarController::cla
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+// Selección de plan post-registro
+Route::middleware(['auth'])->group(function () {
+    Route::get('/register/plan', [PlanController::class, 'select'])->name('register.plan');
+    Route::post('/register/plan', [PlanController::class, 'store'])->name('register.plan.store');
+});
 
 require __DIR__.'/auth.php';

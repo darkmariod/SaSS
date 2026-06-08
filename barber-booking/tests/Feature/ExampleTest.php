@@ -21,7 +21,7 @@ class ExampleTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'status' => 'ok',
-                'app' => 'BarberBooking EC',
+                'app' => 'Booking Ec',
             ]);
     }
 }

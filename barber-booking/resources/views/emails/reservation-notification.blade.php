@@ -38,6 +38,6 @@
     @endcomponent
 
     @component('mail::footer')
-        BarberBooking EC - Sistema de Reservas
+        Booking Ec - Sistema de Reservas
     @endcomponent
 @endcomponent
