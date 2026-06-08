@@ -9,7 +9,7 @@ ARG PHP_VERSION=8.2
 FROM php:8.2-cli-alpine AS vendor
 
 # Install required extensions and git for composer
-RUN apk add --no-cache git unzip curl \
+RUN apk add --no-cache git unzip curl icu-dev \
     && docker-php-ext-install intl pcntl
 
 # Install Composer
