@@ -74,14 +74,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory for Laravel
 WORKDIR /var/www
 
-# Copy vendor from vendor stage
+# Copy vendor from vendor stage (already optimized)
 COPY --from=vendor /app/vendor ./vendor
 
-# Copy composer files for autoloader
+# Copy composer files
 COPY composer.json composer.lock ./
-
-# Dump autoloader with the correct vendor path
-RUN composer dump-autoload --no-dev --optimize
 
 # Copy the rest of the application
 COPY . .
