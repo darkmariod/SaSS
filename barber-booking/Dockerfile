@@ -6,7 +6,14 @@ ARG PHP_VERSION=8.2
 # ─────────────────────────────────────────────
 # Stage 1: Vendor — Composer dependencies
 # ─────────────────────────────────────────────
-FROM composer:latest AS vendor
+FROM php:8.2-cli-alpine AS vendor
+
+# Install required extensions and git for composer
+RUN apk add --no-cache git unzip curl \
+    && docker-php-ext-install intl pcntl
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
