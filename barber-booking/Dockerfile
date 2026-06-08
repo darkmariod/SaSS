@@ -89,8 +89,11 @@ COPY --from=assets /app/public/build ./public/build
 # Copy production PHP configuration
 COPY docker/php.ini /usr/local/etc/php/conf.d/production.ini
 
+# Ensure SQLite database file exists (for cache locks / database cache driver)
+RUN touch database/database.sqlite
+
 # Set proper permissions for storage and bootstrap/cache
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/database/database.sqlite \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
 # Expose PHP-FPM port (internal)
