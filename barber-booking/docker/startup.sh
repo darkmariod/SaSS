@@ -30,7 +30,7 @@ touch database/database.sqlite
 
 # ── Migraciones (solo si la base de datos responde) ──
 echo "=== [Laravel] Corriendo migraciones ==="
-php artisan migrate --force --isolated
+php artisan migrate --force
 
 # ── Iniciar PHP-FPM ──
 echo "=== [Laravel] Listo. Iniciando PHP-FPM ==="
