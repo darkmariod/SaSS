@@ -1,25 +1,14 @@
 @component('mail::message')
-    {{-- Header --}}
-    @slot('subject')
-        @if ($reservation->customer_email === auth()->user()?->email ?? null)
-            Confirmación de Reserva - {{ $service->name }}
-        @else
-            Nueva Reserva - {{ $service->name }}
-        @endif
-    @endslot
-
-    {{-- Saludo dinámico --}}
-    @php
-        $isOwner = ($reservation->customer_email !== null && $reservation->customer_email === (auth()->user()?->email ?? null)) ? false : true;
-    @endphp
-
-    @if ($isOwner)
+    {{-- Greeting depends on the explicit audience passed by the Mailable, never on auth() --}}
+    @if ($isStaff)
         # Hola, {{ $shop->name }}
+
+        Se ha registrado una nueva reserva con los siguientes detalles:
     @else
         # Hola, {{ $customer }}
-    @endif
 
-    Se ha registrado una reserva con los siguientes detalles:
+        ¡Tu reserva quedó registrada! Estos son los detalles:
+    @endif
 
     | Detalle | Info |
     |---|---|
@@ -30,12 +19,15 @@
     | **Hora** | {{ $time }} |
     | **Total** | ${{ number_format($total, 2) }} |
 
-    {{-- Incluir archivo .ics adjunto para agregar al calendario --}}
+    {{-- The .ics attachment lets any recipient add this to their calendar --}}
     El archivo `.ics` adjunto podés abrirlo para agregar esta reserva a tu calendario (Google Calendar, Apple Calendar, Outlook).
 
-    @component('mail::button', ['url' => url("/admin/reservations/{$reservation->id}")])
-        Ver Reserva en el Panel
-    @endcomponent
+    {{-- Only staff (owner/barber) get a link into the admin panel --}}
+    @if ($isStaff)
+        @component('mail::button', ['url' => url("/admin/reservations/{$reservation->id}")])
+            Ver reserva en el panel
+        @endcomponent
+    @endif
 
     @component('mail::footer')
         Booking Ec - Sistema de Reservas

@@ -28,6 +28,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
     const receiptPreview = ref("");
     const receiptUploaded = ref(false);
     const receiptUrl = ref("");
+    const uploadToken = ref("");
 
     const paymentOption = ref("at_appointment");
 
@@ -162,6 +163,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
         receiptPreview.value = "";
         receiptUploaded.value = false;
         receiptUrl.value = "";
+        uploadToken.value = "";
     };
 
     const selectMainService = (service) => {
@@ -277,7 +279,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
         loadingSlots.value = true;
 
         try {
-            const response = await axios.post("/api/barberia/availability/check", {
+            const response = await axios.post("/barberia/availability/check", {
                 service_id: bookableService.value.id,
                 addon_service_id: selectedAddon.value?.id || null,
                 barber_profile_id: finalBarberProfile.value.id,
@@ -354,7 +356,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
         creatingReservation.value = true;
 
         try {
-            const response = await axios.post("/api/barberia/reservations", {
+            const response = await axios.post("/barberia/reservations", {
                 barber_shop_id: props.shop.id,
                 service_id: bookableService.value.id,
                 addon_service_id: selectedAddon.value?.id || null,
@@ -371,6 +373,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
             });
 
             createdReservation.value = response.data.reservation;
+            uploadToken.value = response.data.upload_token || "";
             successMessage.value = "¡Su cita ha sido reservada con éxito!";
             reservationCreated.value = true;
 
@@ -422,11 +425,10 @@ export function useBookingWizard(props, preselectedBarber = null) {
         try {
             const formData = new FormData();
             formData.append("receipt_image", receiptFile.value);
-            formData.append("customer_name", createdReservation.value.customer_name);
-            formData.append("customer_phone", createdReservation.value.customer_phone);
+            formData.append("token", uploadToken.value);
 
             const response = await axios.post(
-                `/api/barberia/reservations/${createdReservation.value.id}/receipt`,
+                `/barberia/reservations/${createdReservation.value.id}/receipt`,
                 formData,
                 {
                     headers: {
@@ -540,6 +542,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
         receiptPreview,
         receiptUploaded,
         receiptUrl,
+        uploadToken,
 
         customer,
         paymentOption,

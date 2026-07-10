@@ -32,16 +32,21 @@ Route::get('/barberia/{slug}', [PublicBookingController::class, 'shop'])
 Route::get('/barberia/{slug}/reservar', [PublicBookingController::class, 'show'])
     ->name('public.booking.show');
 
+// Public booking is unauthenticated + CSRF-exempt, so rate limiting is the
+// only thing standing between the shop's agenda and spam/flooding.
 Route::post('/barberia/availability/check', [PublicBookingController::class, 'availability'])
     ->name('public.booking.availability')
-    ->withoutMiddleware(['csrf']); // Quitamos CSRF para estas rutas públicas
+    ->middleware('throttle:30,1')
+    ->withoutMiddleware(['csrf']);
 
 Route::post('/barberia/reservations', [PublicBookingController::class, 'store'])
     ->name('public.booking.store')
+    ->middleware('throttle:10,1')
     ->withoutMiddleware(['csrf']);
 
 Route::post('/barberia/reservations/{reservation}/receipt', [PublicBookingController::class, 'uploadReceipt'])
     ->name('public.booking.receipt')
+    ->middleware('throttle:10,1')
     ->withoutMiddleware(['csrf']);
 
 // API para el calendario interno de Filament

@@ -246,7 +246,20 @@ class GoogleCalendarService
      */
     public function deleteEvent(Reservation $reservation): bool
     {
-        if (! $this->enabled || ! $reservation->google_event_id) {
+        if (! $reservation->google_event_id) {
+            return false;
+        }
+
+        return $this->deleteEventById($reservation->google_event_id);
+    }
+
+    /**
+     * Delete an event by its Google event id. Accepts a bare id so it can run
+     * from a queued job after the local reservation row is already gone.
+     */
+    public function deleteEventById(string $eventId): bool
+    {
+        if (! $this->enabled) {
             return false;
         }
 
@@ -257,18 +270,16 @@ class GoogleCalendarService
 
         try {
             $calendarId = $this->getCalendarId();
-            $service->events->delete($calendarId, $reservation->google_event_id);
+            $service->events->delete($calendarId, $eventId);
 
             Log::info('Google Calendar: event deleted', [
-                'reservation_id' => $reservation->id,
-                'event_id' => $reservation->google_event_id,
+                'event_id' => $eventId,
             ]);
 
             return true;
         } catch (\Exception $e) {
             Log::error('Google Calendar: error deleting event', [
-                'reservation_id' => $reservation->id,
-                'event_id' => $reservation->google_event_id,
+                'event_id' => $eventId,
                 'error' => $e->getMessage(),
             ]);
 

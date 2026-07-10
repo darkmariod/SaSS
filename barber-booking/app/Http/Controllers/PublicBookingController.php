@@ -323,6 +323,7 @@ class PublicBookingController extends Controller
                 'reservation_status' => 'pendiente',
                 'total_amount' => $totalAmount,
                 'payment_status' => 'pendiente',
+                'upload_token' => \Illuminate\Support\Str::random(48),
             ]);
 
             $paymentMethod = $data['payment_option'] === 'today' ? 'bank_transfer' : 'cash';
@@ -351,24 +352,31 @@ class PublicBookingController extends Controller
             ]);
         });
 
-        // Disparar notificación por email al dueño y al cliente
-        $emailSent = false;
+        // Email al dueño, al barbero y al cliente (cada uno con su audiencia)
         try {
-            $mail = new ReservationNotification($reservation);
-            Mail::to($shop->owner->email)->send($mail);
-            $emailSent = true;
+            if ($shop->owner?->email) {
+                Mail::to($shop->owner->email)->send(new ReservationNotification($reservation, 'owner'));
+            }
 
-            // Si el cliente dejó email, también se lo enviamos
+            // El barbero asignado también debe enterarse de su turno
+            $barber = $reservation->consultant;
+            if ($barber?->email && $barber->email !== $shop->owner?->email) {
+                Mail::to($barber->email)->send(new ReservationNotification($reservation, 'barber'));
+            }
+
+            // Si el cliente dejó email, recibe una confirmación (sin link al panel)
             if ($reservation->customer_email) {
-                Mail::to($reservation->customer_email)->send($mail);
+                Mail::to($reservation->customer_email)->send(new ReservationNotification($reservation, 'customer'));
             }
         } catch (\Exception $e) {
             \Log::error('Error sending reservation email: ' . $e->getMessage());
         }
 
-        // Disparar notificación WhatsApp al dueño (wa.me link)
+        // Notificación WhatsApp al dueño (wa.me link)
         try {
-            $shop->owner->notify(new ReservationWhatsApp($reservation));
+            if ($shop->owner) {
+                $shop->owner->notify(new ReservationWhatsApp($reservation));
+            }
         } catch (\Exception $e) {
             \Log::error('Error sending WhatsApp notification: ' . $e->getMessage());
         }
@@ -376,13 +384,18 @@ class PublicBookingController extends Controller
         return response()->json([
             'message' => 'Reserva creada correctamente.',
             'reservation' => $reservation,
+            // Capability token so this client (and only this client) can upload a receipt.
+            'upload_token' => $reservation->upload_token,
         ], 201);
     }
 
     public function uploadReceipt(Request $request, Reservation $reservation): JsonResponse
     {
-        if ($reservation->customer_name !== $request->input('customer_name') ||
-            $reservation->customer_phone !== $request->input('customer_phone')) {
+        // Authorize with the per-reservation capability token issued at booking time.
+        // Name + phone are public data and must NOT be used as an authorization secret.
+        $token = (string) $request->input('token', '');
+
+        if (empty($reservation->upload_token) || ! hash_equals($reservation->upload_token, $token)) {
             abort(403, 'No autorizado');
         }
 

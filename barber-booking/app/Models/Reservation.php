@@ -14,7 +14,9 @@ class Reservation extends Model
         'service_id',
         'addon_service_id',
         'transfer_id',
+        'barber_payment_id',
         'google_event_id',
+        'upload_token',
         'user_id',
         'consultant_id',
         'customer_name',
@@ -32,6 +34,14 @@ class Reservation extends Model
     protected $casts = [
         'reservation_date' => 'date',
         'total_amount' => 'decimal:2',
+    ];
+
+    /**
+     * The upload token is a capability secret for the public receipt upload.
+     * It must never leak in serialized payloads (calendar, barber panel, etc.).
+     */
+    protected $hidden = [
+        'upload_token',
     ];
 
     public function barberShop(): BelongsTo
@@ -67,6 +77,11 @@ class Reservation extends Model
     public function transfer(): BelongsTo
     {
         return $this->belongsTo(Transfer::class);
+    }
+
+    public function barberPayment(): BelongsTo
+    {
+        return $this->belongsTo(BarberPayment::class);
     }
 
     public function transfers(): HasMany

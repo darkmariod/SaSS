@@ -69,35 +69,46 @@ class CashRegister extends Model
 
     public function recalculate(): void
     {
-        $manualIncome = $this->movements()
+        // A closed register is a historical snapshot and must never be mutated
+        // by later movements, transfers or reservations tied to the same date.
+        if ($this->status === 'closed') {
+            return;
+        }
+
+        $this->computeTotals();
+    }
+
+    protected function computeTotals(): void
+    {
+        $manualIncome = round((float) $this->movements()
             ->where('type', 'income')
-            ->sum('amount');
+            ->sum('amount'), 2);
 
-        $expenses = $this->movements()
+        $expenses = round((float) $this->movements()
             ->where('type', 'expense')
-            ->sum('amount');
+            ->sum('amount'), 2);
 
-        $transferIncome = Transfer::query()
+        $transferIncome = round((float) Transfer::query()
             ->where('barber_shop_id', $this->barber_shop_id)
             ->where('status', 'confirmed')
             ->whereDate('confirmed_at', $this->date)
-            ->sum('amount');
+            ->sum('amount'), 2);
 
-        $cashIncome = Reservation::query()
+        $cashIncome = round((float) Reservation::query()
             ->where('barber_shop_id', $this->barber_shop_id)
             ->where('payment_status', 'pagado')
             ->whereDate('reservation_date', $this->date)
             ->whereNull('transfer_id')
-            ->sum('total_amount');
+            ->sum('total_amount'), 2);
 
-        $systemAmount = (float) $this->opening_amount
-            + (float) $cashIncome
-            + (float) $transferIncome
-            + (float) $manualIncome
-            - (float) $expenses;
+        $systemAmount = round((float) $this->opening_amount
+            + $cashIncome
+            + $transferIncome
+            + $manualIncome
+            - $expenses, 2);
 
         $difference = $this->real_amount !== null
-            ? (float) $this->real_amount - $systemAmount
+            ? round((float) $this->real_amount - $systemAmount, 2)
             : 0;
 
         $this->update([
@@ -112,13 +123,20 @@ class CashRegister extends Model
 
     public function close(float $realAmount, int $userId): void
     {
+        // Closing is idempotent: a register can only be closed once.
+        if ($this->status === 'closed') {
+            return;
+        }
+
+        // Compute the final snapshot while still open, then freeze it.
+        $this->real_amount = round($realAmount, 2);
+        $this->computeTotals();
+
         $this->update([
-            'real_amount' => $realAmount,
+            'real_amount' => round($realAmount, 2),
             'closed_by' => $userId,
             'closed_at' => now(),
             'status' => 'closed',
         ]);
-
-        $this->recalculate();
     }
 }

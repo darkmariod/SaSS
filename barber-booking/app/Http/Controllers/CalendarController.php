@@ -25,16 +25,20 @@ class CalendarController extends Controller
             ->with(['service', 'addonService', 'consultant', 'barberShop'])
             ->whereIn('reservation_status', ['pendiente', 'confirmada', 'completada']);
 
-        // Owner: solo sus barberías
+        // Scope strictly by role. Any authenticated user without an explicit
+        // owner/barber/admin role must NOT be able to read other people's
+        // reservations (customer PII). Default is deny.
         if ($user->hasRole('owner')) {
+            // Owner: only reservations from the shops they own.
             $query->whereHas('barberShop', function ($q) use ($user) {
                 $q->where('owner_id', $user->id);
             });
-        }
-
-        // Barber: solo sus reservas
-        if ($user->hasRole('barber')) {
+        } elseif ($user->hasRole('barber')) {
+            // Barber: only their own reservations.
             $query->where('consultant_id', $user->id);
+        } elseif (! $user->hasAnyRole(['admin', 'super_admin'])) {
+            // No calendar-eligible role → no data.
+            return response()->json([]);
         }
 
         // Filter by date range

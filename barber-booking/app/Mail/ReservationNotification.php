@@ -7,21 +7,29 @@ use App\Services\ICalService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 class ReservationNotification extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
+    /**
+     * @param  'owner'|'barber'|'customer'  $audience  Who this copy is addressed to.
+     */
     public function __construct(
         public Reservation $reservation,
+        public string $audience = 'owner',
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Nueva Reserva - ' . $this->reservation->service->name,
-        );
+        $subject = $this->audience === 'customer'
+            ? 'Confirmación de reserva - ' . $this->reservation->service->name
+            : 'Nueva reserva - ' . $this->reservation->service->name;
+
+        return new Envelope(subject: $subject);
     }
 
     public function content(): Content
@@ -30,6 +38,8 @@ class ReservationNotification extends Mailable implements ShouldQueue
             markdown: 'emails.reservation-notification',
             with: [
                 'reservation' => $this->reservation,
+                'audience' => $this->audience,
+                'isStaff' => $this->audience !== 'customer',
                 'shop' => $this->reservation->barberShop,
                 'service' => $this->reservation->service,
                 'customer' => $this->reservation->customer_name,

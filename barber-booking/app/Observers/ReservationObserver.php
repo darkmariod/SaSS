@@ -2,27 +2,19 @@
 
 namespace App\Observers;
 
+use App\Jobs\SyncReservationToGoogleCalendar;
 use App\Models\Reservation;
-use App\Services\GoogleCalendarService;
 
 class ReservationObserver
 {
-    public function __construct(
-        private readonly GoogleCalendarService $googleCalendar,
-    ) {}
-
     /**
      * Handle the Reservation "created" event.
      */
     public function created(Reservation $reservation): void
     {
-        // Solo crear evento si la reserva ya está confirmada
+        // Only mirror to Google once the reservation is confirmed.
         if ($reservation->reservation_status === 'confirmada') {
-            $eventId = $this->googleCalendar->createEvent($reservation);
-
-            if ($eventId) {
-                $reservation->updateQuietly(['google_event_id' => $eventId]);
-            }
+            SyncReservationToGoogleCalendar::dispatch('sync', $reservation->id);
         }
     }
 
@@ -31,39 +23,34 @@ class ReservationObserver
      */
     public function updated(Reservation $reservation): void
     {
-        // Detectar cambio de estado
+        // Detect status transitions.
         if ($reservation->isDirty('reservation_status')) {
             $newStatus = $reservation->reservation_status;
             $oldStatus = $reservation->getOriginal('reservation_status');
 
-            // Cancelada -> eliminar evento
+            // Cancelled -> delete the mirrored event.
             if ($newStatus === 'cancelada') {
-                $this->googleCalendar->deleteEvent($reservation);
-
                 if ($reservation->google_event_id) {
+                    SyncReservationToGoogleCalendar::dispatch(
+                        'delete',
+                        googleEventId: $reservation->google_event_id,
+                    );
+
                     $reservation->updateQuietly(['google_event_id' => null]);
                 }
 
                 return;
             }
 
-            // Confirmada (desde pendiente) -> crear o actualizar evento
+            // Confirmed (from another status) -> create or update the event.
             if ($newStatus === 'confirmada' && $oldStatus !== 'confirmada') {
-                if ($reservation->google_event_id) {
-                    $this->googleCalendar->updateEvent($reservation);
-                } else {
-                    $eventId = $this->googleCalendar->createEvent($reservation);
-
-                    if ($eventId) {
-                        $reservation->updateQuietly(['google_event_id' => $eventId]);
-                    }
-                }
+                SyncReservationToGoogleCalendar::dispatch('sync', $reservation->id);
 
                 return;
             }
         }
 
-        // Si cambió fecha/hora/servicio y ya tiene evento, actualizar
+        // Date/time/service changed on an already-mirrored reservation -> update.
         if (
             $reservation->google_event_id
             && (
@@ -73,7 +60,7 @@ class ReservationObserver
                 || $reservation->isDirty('service_id')
             )
         ) {
-            $this->googleCalendar->updateEvent($reservation);
+            SyncReservationToGoogleCalendar::dispatch('sync', $reservation->id);
         }
     }
 
@@ -83,7 +70,10 @@ class ReservationObserver
     public function deleted(Reservation $reservation): void
     {
         if ($reservation->google_event_id) {
-            $this->googleCalendar->deleteEvent($reservation);
+            SyncReservationToGoogleCalendar::dispatch(
+                'delete',
+                googleEventId: $reservation->google_event_id,
+            );
         }
     }
 }

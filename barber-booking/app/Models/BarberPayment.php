@@ -4,9 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class BarberPayment extends Model
 {
+    protected static function booted(): void
+    {
+        // If a payment is deleted while it still owns reservations, release them
+        // so they become payable again instead of staying orphaned.
+        static::deleting(function (BarberPayment $payment): void {
+            Reservation::query()
+                ->where('barber_payment_id', $payment->id)
+                ->update(['barber_payment_id' => null]);
+        });
+    }
+
     protected $fillable = [
         'barber_shop_id',
         'barber_profile_id',
@@ -67,34 +79,51 @@ class BarberPayment extends Model
             return;
         }
 
-        $reservationsQuery = Reservation::query()
-            ->where('barber_shop_id', $this->barber_shop_id)
-            ->where('consultant_id', $barberProfile->user_id)
-            ->where('payment_status', 'pagado')
-            ->whereIn('reservation_status', ['confirmada', 'completada'])
-            ->whereDate('reservation_date', '>=', $this->period_start)
-            ->whereDate('reservation_date', '<=', $this->period_end);
+        DB::transaction(function () use ($barberProfile): void {
+            // Release reservations previously tied to this payment so recalculating
+            // an existing period does not lose or double-count anything.
+            Reservation::query()
+                ->where('barber_payment_id', $this->id)
+                ->update(['barber_payment_id' => null]);
 
-        $grossAmount = (float) $reservationsQuery->sum('total_amount');
-        $reservationsCount = (int) $reservationsQuery->count();
+            // Only reservations not already liquidated by another payment are eligible.
+            // This is what prevents daily + weekly + monthly periods from paying twice.
+            $reservations = Reservation::query()
+                ->where('barber_shop_id', $this->barber_shop_id)
+                ->where('consultant_id', $barberProfile->user_id)
+                ->where('payment_status', 'pagado')
+                ->whereIn('reservation_status', ['confirmada', 'completada'])
+                ->whereNull('barber_payment_id')
+                ->whereDate('reservation_date', '>=', $this->period_start)
+                ->whereDate('reservation_date', '<=', $this->period_end)
+                ->get();
 
-        $commissionPercentage = (float) $barberProfile->commission_percentage;
-        $commissionAmount = $grossAmount * ($commissionPercentage / 100);
+            $grossAmount = round((float) $reservations->sum(fn (Reservation $r): float => (float) $r->total_amount), 2);
+            $reservationsCount = $reservations->count();
 
-        $netAmount = $commissionAmount
-            - (float) $this->advance_amount
-            + (float) $this->incentive_amount;
+            $commissionPercentage = (float) $barberProfile->commission_percentage;
+            $commissionAmount = round($grossAmount * ($commissionPercentage / 100), 2);
 
-        $this->update([
-            'gross_amount' => $grossAmount,
-            'commission_percentage' => $commissionPercentage,
-            'commission_amount' => $commissionAmount,
-            'net_amount' => $netAmount,
-            'reservations_count' => $reservationsCount,
-            'status' => 'calculated',
-            'calculated_by' => auth()->id(),
-            'calculated_at' => now(),
-        ]);
+            $netAmount = round($commissionAmount
+                - (float) $this->advance_amount
+                + (float) $this->incentive_amount, 2);
+
+            // Claim these reservations for this payment so no overlapping period can grab them.
+            Reservation::query()
+                ->whereIn('id', $reservations->pluck('id'))
+                ->update(['barber_payment_id' => $this->id]);
+
+            $this->update([
+                'gross_amount' => $grossAmount,
+                'commission_percentage' => $commissionPercentage,
+                'commission_amount' => $commissionAmount,
+                'net_amount' => $netAmount,
+                'reservations_count' => $reservationsCount,
+                'status' => 'calculated',
+                'calculated_by' => auth()->id(),
+                'calculated_at' => now(),
+            ]);
+        });
     }
 
     public function markAsPaid(int $userId): void
@@ -108,8 +137,15 @@ class BarberPayment extends Model
 
     public function cancel(): void
     {
-        $this->update([
-            'status' => 'cancelled',
-        ]);
+        DB::transaction(function (): void {
+            // Free the reservations so they can be included in a future payment.
+            Reservation::query()
+                ->where('barber_payment_id', $this->id)
+                ->update(['barber_payment_id' => null]);
+
+            $this->update([
+                'status' => 'cancelled',
+            ]);
+        });
     }
 }
