@@ -79,4 +79,9 @@ class BarberShop extends Model
     {
         return $this->hasMany(Subscription::class);
     }
+
+    public function subscriptionPayments(): HasMany
+    {
+        return $this->hasMany(SubscriptionPayment::class);
+    }
 }

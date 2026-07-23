@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { Head } from "@inertiajs/vue3";
 import { useBookingWizard } from "@/Composables/useBookingWizard";
 
@@ -42,6 +42,33 @@ const steps = [
 const currentStepIndex = computed(() => {
     return steps.findIndex((s) => s.key === wizard.step.value);
 });
+
+// El navegador aplica "scroll anchoring": cuando el contenido de un paso (largo)
+// se reemplaza por otro (corto), reajusta la posición de scroll para mantener a la
+// vista lo que había bajo el ancla —normalmente la columna del resumen—, lo que
+// pisaba cualquier scrollTo y dejaba la página desplazada con un hueco en blanco
+// sobre el indicador de pasos. Se desactiva mientras dura el flujo de reserva.
+onMounted(() => {
+    document.documentElement.style.overflowAnchor = "none";
+});
+
+onBeforeUnmount(() => {
+    document.documentElement.style.overflowAnchor = "";
+});
+
+// Con el anchoring desactivado, al cambiar de paso llevamos la vista al inicio del
+// flujo. El scroll se difiere ~260ms para correr DESPUÉS de la transición
+// `out-in` (el contenido saliente ya se desmontó y el entrante quedó con su altura
+// final), evitando que el "clamp" del navegador —al reducirse la altura de la
+// página— deje la posición a mitad de camino.
+watch(
+    () => wizard.step.value,
+    () => {
+        setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: "auto" });
+        }, 260);
+    },
+);
 </script>
 
 <template>

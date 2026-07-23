@@ -3,15 +3,13 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\BarberShop;
-use App\Models\Role;
 use App\Models\User;
+use App\Services\TenantProvisioningService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -32,7 +30,7 @@ class RegisteredUserController extends Controller
      *
      * @throws ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, TenantProvisioningService $provisioning): RedirectResponse
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -41,25 +39,15 @@ class RegisteredUserController extends Controller
             'shop_name' => 'required|string|max:255',
         ]);
 
-        $ownerRole = Role::where('name', 'owner')->first();
-
         $user = User::create([
-            'role_id' => $ownerRole?->id,
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
-        // Asignar rol Spatie de owner
-        $user->assignRole('owner');
-
-        // Crear la barbería del owner
-        BarberShop::create([
-            'owner_id' => $user->id,
-            'name' => $request->shop_name,
-            'slug' => Str::slug($request->shop_name) . '-' . Str::random(4),
-            'is_active' => true,
-        ]);
+        // Provision the whole tenant (roles, shop, starter catalog, trial) so the
+        // owner lands on a ready-to-use panel with a working public booking link.
+        $provisioning->provision($user, $request->shop_name);
 
         event(new Registered($user));
 

@@ -3,9 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\CashRegister;
+use App\Models\Plan;
 use App\Models\Reservation;
 use App\Models\ReservationDetail;
 use App\Models\Service;
+use App\Models\Subscription;
 use App\Models\Transfer;
 use App\Models\User;
 use App\Models\BarberShop;
@@ -75,6 +77,19 @@ class DemoSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+
+        // ─── Suscripción demo (trial activo) para que el owner acceda al panel ───
+        $basicPlan = Plan::where('slug', 'basico')->first();
+        if ($basicPlan) {
+            Subscription::updateOrCreate(
+                ['barber_shop_id' => $shop->id, 'status' => 'trial'],
+                [
+                    'plan_id' => $basicPlan->id,
+                    'starts_at' => now(),
+                    'trial_ends_at' => now()->addDays((int) $basicPlan->trial_days),
+                ]
+            );
+        }
 
         // ─── Servicios ───
         $mensCut = Service::updateOrCreate(

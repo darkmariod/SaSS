@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Plan;
-use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,60 +14,62 @@ class PlanController extends Controller
     {
         $user = auth()->user();
         $barberShop = $user->barberShop;
-        $currentSubscription = null;
+        $currentSubscription = $barberShop?->subscription;
         $daysRemaining = null;
 
-        if ($barberShop) {
-            $currentSubscription = $barberShop->subscription;
-
-            if ($currentSubscription && $currentSubscription->status === 'trial') {
-                $daysRemaining = $currentSubscription->daysRemainingInTrial();
-            }
+        if ($currentSubscription && $currentSubscription->status === 'trial') {
+            $daysRemaining = $currentSubscription->daysRemainingInTrial();
         }
 
         return Inertia::render('Auth/SelectPlan', [
-            'plans' => Plan::active()->get(),
+            'plans' => Plan::active()->get()->map(fn (Plan $plan) => [
+                'id' => $plan->id,
+                'slug' => $plan->slug,
+                'name' => $plan->name,
+                'description' => $plan->description,
+                'max_barbers' => $plan->max_barbers,
+                'setup_price' => $plan->setup_price,
+                'monthly_price' => $plan->priceFor('monthly'),
+                'annual_price' => $plan->priceFor('annual'),
+                'trial_days' => $plan->trial_days,
+            ]),
             'currentSubscription' => $currentSubscription,
             'daysRemaining' => $daysRemaining,
             'barberShop' => $barberShop,
+            'paymentInfo' => config('billing'),
         ]);
     }
 
+    /**
+     * Register a subscription payment (owner → platform) for review. The payment
+     * lands as "pending"; a super_admin confirms it, which activates the plan.
+     */
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'plan_slug' => 'required|string|exists:plans,slug',
+            'billing_period' => 'required|in:monthly,annual',
+            'reference' => 'nullable|string|max:255',
         ]);
 
         $plan = Plan::where('slug', $validated['plan_slug'])->firstOrFail();
-        $user = auth()->user();
-        $barberShop = $user->barberShop;
+        $barberShop = auth()->user()->barberShop;
 
         if (! $barberShop) {
             return redirect()->route('register')
                 ->with('error', 'Primero creá tu barbería.');
         }
 
-        // Si ya tiene una suscripción activa, la cancelamos
-        $existingSubscription = $barberShop->subscription;
-        if ($existingSubscription && $existingSubscription->isActive()) {
-            $existingSubscription->update([
-                'status' => 'cancelled',
-                'ends_at' => Carbon::now(),
-                'cancelled_at' => Carbon::now(),
-            ]);
-        }
-
-        // Crear nueva suscripción con trial
-        $trialDays = $plan->trial_days;
-        $barberShop->subscriptions()->create([
+        $barberShop->subscriptionPayments()->create([
+            'subscription_id' => $barberShop->subscription?->id,
             'plan_id' => $plan->id,
-            'status' => 'trial',
-            'trial_ends_at' => Carbon::now()->addDays($trialDays),
-            'starts_at' => Carbon::now(),
+            'billing_period' => $validated['billing_period'],
+            'amount' => $plan->priceFor($validated['billing_period']),
+            'status' => 'pending',
+            'reference' => $validated['reference'] ?? null,
         ]);
 
-        return redirect()->route('dashboard')
-            ->with('success', "¡Plan {$plan->name} activado! Disfrutá de {$trialDays} días de prueba gratis.");
+        return redirect()->route('register.plan')
+            ->with('success', 'Registramos tu pago. En cuanto lo confirmemos, se activa tu plan. ¡Gracias!');
     }
 }

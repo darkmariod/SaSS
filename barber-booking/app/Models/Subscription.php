@@ -42,8 +42,43 @@ class Subscription extends Model
 
     public function isExpired(): bool
     {
-        return $this->status === 'expired'
-            || ($this->status === 'trial' && $this->trial_ends_at && Carbon::now()->greaterThan($this->trial_ends_at));
+        if ($this->status === 'expired') {
+            return true;
+        }
+
+        if ($this->status === 'trial') {
+            return $this->trial_ends_at && Carbon::now()->greaterThan($this->trial_ends_at);
+        }
+
+        // A paid subscription lapses once its paid period (ends_at) is over.
+        if ($this->status === 'active') {
+            return $this->ends_at && Carbon::now()->greaterThan($this->ends_at);
+        }
+
+        return false;
+    }
+
+    /**
+     * Activate (or extend) the subscription for a billing period. Extends from
+     * the current ends_at when still in the future, so paying early stacks time
+     * instead of losing the remaining days.
+     *
+     * @param  'monthly'|'annual'  $period
+     */
+    public function activate(string $period): void
+    {
+        $from = ($this->ends_at && $this->ends_at->isFuture()) ? $this->ends_at : Carbon::now();
+
+        $newEnd = $period === 'annual'
+            ? $from->copy()->addYear()
+            : $from->copy()->addMonth();
+
+        $this->update([
+            'status' => 'active',
+            'starts_at' => $this->starts_at ?? Carbon::now(),
+            'ends_at' => $newEnd,
+            'cancelled_at' => null,
+        ]);
     }
 
     public function daysRemainingInTrial(): int
