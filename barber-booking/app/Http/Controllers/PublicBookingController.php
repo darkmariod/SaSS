@@ -352,7 +352,13 @@ class PublicBookingController extends Controller
             ]);
         });
 
-        // Email al dueño, al barbero y al cliente (cada uno con su audiencia)
+        // Email al dueño, al barbero y al cliente (cada uno con su audiencia).
+        // La reserva ya está confirmada en base de datos: notificar es un efecto
+        // secundario de mejor esfuerzo y nunca debe tumbar la respuesta. Se captura
+        // \Throwable y no \Exception porque un fatal de PHP (clase inexistente, error
+        // de tipo) es un \Error, que \Exception no atrapa: escaparía del catch y
+        // devolvería un 500 sobre una reserva ya guardada, llevando al cliente a
+        // reservar de nuevo y duplicar la cita.
         try {
             if ($shop->owner?->email) {
                 Mail::to($shop->owner->email)->send(new ReservationNotification($reservation, 'owner'));
@@ -368,7 +374,7 @@ class PublicBookingController extends Controller
             if ($reservation->customer_email) {
                 Mail::to($reservation->customer_email)->send(new ReservationNotification($reservation, 'customer'));
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('Error sending reservation email: ' . $e->getMessage());
         }
 
@@ -377,7 +383,7 @@ class PublicBookingController extends Controller
             if ($shop->owner) {
                 $shop->owner->notify(new ReservationWhatsApp($reservation));
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('Error sending WhatsApp notification: ' . $e->getMessage());
         }
 
