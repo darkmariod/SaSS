@@ -18,6 +18,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
@@ -91,11 +92,19 @@ class BarberShopResource extends Resource
                                     ->maxLength(255),
 
                                 TextInput::make('slug')
-                                    ->label('Slug (URL)')
-                                    ->helperText('Se usa en: /barberia/{slug}')
+                                    ->label('Dirección pública (URL)')
+                                    ->helperText(
+                                        'La barbería se abre en /barberia/{slug}. '
+                                        . 'CUIDADO: si lo cambiás, los códigos QR ya impresos y los enlaces '
+                                        . 'compartidos dejan de funcionar. Sólo minúsculas y guiones.'
+                                    )
                                     ->required()
                                     ->maxLength(255)
-                                    ->unique(ignoreRecord: true),
+                                    ->unique(ignoreRecord: true)
+                                    // Se normaliza antes de guardar: un slug con mayúsculas o
+                                    // espacios deja la página pública en 404.
+                                    ->dehydrateStateUsing(fn (?string $state): string => Str::slug((string) $state))
+                                    ->rule('regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'),
 
                                 TextInput::make('city')
                                     ->label('Ciudad')

@@ -34,9 +34,13 @@ class ReservationObserver
                     SyncReservationToGoogleCalendar::dispatch(
                         'delete',
                         googleEventId: $reservation->google_event_id,
+                        googleCalendarId: $reservation->google_calendar_id,
                     );
 
-                    $reservation->updateQuietly(['google_event_id' => null]);
+                    $reservation->updateQuietly([
+                        'google_event_id' => null,
+                        'google_calendar_id' => null,
+                    ]);
                 }
 
                 return;
@@ -73,6 +77,7 @@ class ReservationObserver
             SyncReservationToGoogleCalendar::dispatch(
                 'delete',
                 googleEventId: $reservation->google_event_id,
+                googleCalendarId: $reservation->google_calendar_id,
             );
         }
     }

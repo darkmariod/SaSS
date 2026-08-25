@@ -30,6 +30,11 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            // Cada miembro del equipo administra su propia cuenta: los barberos
+            // cambian su contraseña sin depender del dueño ni del administrador.
+            // isSimple: false la muestra dentro del panel, con la navegación
+            // habitual, en lugar de una pantalla suelta.
+            ->profile(isSimple: false)
             ->colors([
                 'primary' => Color::Amber,
             ])

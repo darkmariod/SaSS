@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BarberProfile;
 use App\Models\Reservation;
 use Google\Client as GoogleClient;
 use Google\Service\Calendar as CalendarService;
@@ -64,9 +65,33 @@ class GoogleCalendarService
     }
 
     /**
-     * Obtener el calendar ID a usar (por defecto 'primary').
+     * Calendario destino de una reserva.
+     *
+     * Prioridad: el calendario ya usado por el evento (si la reserva lo tiene
+     * grabado) > el calendario propio del barbero > el calendario general de la
+     * barbería. Respetar primero el valor grabado evita que un cambio posterior
+     * de configuración deje eventos viejos sin poder editarse ni cancelarse.
      */
-    private function getCalendarId(): string
+    private function resolveCalendarId(?Reservation $reservation = null): string
+    {
+        if ($reservation?->google_calendar_id) {
+            return $reservation->google_calendar_id;
+        }
+
+        $delBarbero = $reservation
+            ? BarberProfile::query()
+                ->where('user_id', $reservation->consultant_id)
+                ->where('barber_shop_id', $reservation->barber_shop_id)
+                ->value('google_calendar_id')
+            : null;
+
+        return $delBarbero ?: $this->getDefaultCalendarId();
+    }
+
+    /**
+     * Calendario general de la barbería, usado cuando el barbero no tiene uno.
+     */
+    private function getDefaultCalendarId(): string
     {
         return config('services.google.calendar_id', 'primary');
     }
@@ -169,12 +194,17 @@ class GoogleCalendarService
             $event->setEnd($this->buildEventDateTime($reservation, 'end_time'));
             $event->setReminders($this->buildReminders());
 
-            $calendarId = $this->getCalendarId();
+            $calendarId = $this->resolveCalendarId($reservation);
             $createdEvent = $service->events->insert($calendarId, $event);
+
+            // Dejar grabado dónde quedó el evento: es lo que permite editarlo o
+            // cancelarlo más adelante aunque cambie la configuración del barbero.
+            $reservation->forceFill(['google_calendar_id' => $calendarId])->saveQuietly();
 
             Log::info('Google Calendar: event created', [
                 'reservation_id' => $reservation->id,
                 'event_id' => $createdEvent->id,
+                'calendar_id' => $calendarId,
             ]);
 
             return $createdEvent->id;
@@ -205,7 +235,7 @@ class GoogleCalendarService
         }
 
         try {
-            $calendarId = $this->getCalendarId();
+            $calendarId = $this->resolveCalendarId($reservation);
 
             // Obtener evento existente
             $event = $service->events->get($calendarId, $reservation->google_event_id);
@@ -250,14 +280,20 @@ class GoogleCalendarService
             return false;
         }
 
-        return $this->deleteEventById($reservation->google_event_id);
+        return $this->deleteEventById(
+            $reservation->google_event_id,
+            $this->resolveCalendarId($reservation),
+        );
     }
 
     /**
      * Delete an event by its Google event id. Accepts a bare id so it can run
      * from a queued job after the local reservation row is already gone.
+     *
+     * El calendario llega por parámetro por la misma razón: cuando el job corre,
+     * la reserva puede ya no existir y no habría forma de deducir el barbero.
      */
-    public function deleteEventById(string $eventId): bool
+    public function deleteEventById(string $eventId, ?string $calendarId = null): bool
     {
         if (! $this->enabled) {
             return false;
@@ -269,11 +305,12 @@ class GoogleCalendarService
         }
 
         try {
-            $calendarId = $this->getCalendarId();
+            $calendarId = $calendarId ?: $this->getDefaultCalendarId();
             $service->events->delete($calendarId, $eventId);
 
             Log::info('Google Calendar: event deleted', [
                 'event_id' => $eventId,
+                'calendar_id' => $calendarId,
             ]);
 
             return true;

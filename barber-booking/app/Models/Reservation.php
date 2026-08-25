@@ -16,6 +16,7 @@ class Reservation extends Model
         'transfer_id',
         'barber_payment_id',
         'google_event_id',
+        'google_calendar_id',
         'upload_token',
         'user_id',
         'consultant_id',

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 class BarberShop extends Model
 {
@@ -34,6 +35,29 @@ class BarberShop extends Model
         'name' => 'string',
         'description' => 'string',
     ];
+
+
+    /**
+     * El slug es la dirección pública de la barbería (/barberia/{slug}) y suele
+     * quedar impresa en un código QR pegado en la puerta, así que se normaliza
+     * siempre al asignarlo.
+     *
+     * Esto existe por un fallo real: al renombrar la barbería desde el panel se
+     * guardó el slug "Seven Barber " —con mayúsculas y un espacio final—, la
+     * dirección pública empezó a responder 404 y durante días nadie pudo
+     * reservar. Normalizar en el modelo cubre todas las vías de escritura, no
+     * sólo el formulario donde apareció el problema.
+     */
+    public function setSlugAttribute(?string $valor): void
+    {
+        $limpio = Str::slug((string) $valor);
+
+        if ($limpio === '') {
+            $limpio = Str::slug((string) ($this->attributes['name'] ?? '')) ?: 'barberia';
+        }
+
+        $this->attributes['slug'] = $limpio;
+    }
 
     public function owner(): BelongsTo
     {

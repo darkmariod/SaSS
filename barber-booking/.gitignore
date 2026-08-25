@@ -26,6 +26,12 @@ Thumbs.db
 # Google Calendar service account credentials
 storage/app/google-calendar/*.json
 
+# Copias de la base de datos: contienen datos de clientes y hashes de
+# contraseñas. Este repositorio es público, nunca deben subirse.
+storage/backups/
+*.sqlite.gz
+database/*.bak-*
+
 # Editor / tooling artifacts
 .atl/
 .windsurf/

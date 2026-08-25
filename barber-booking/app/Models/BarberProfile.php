@@ -14,6 +14,7 @@ class BarberProfile extends Model
         'display_name',
         'bio',
         'photo',
+        'google_calendar_id',
         'commission_percentage',
         'is_active',
     ];

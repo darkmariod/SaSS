@@ -26,13 +26,16 @@ class SyncReservationToGoogleCalendar implements ShouldQueue
         public string $action,
         public ?int $reservationId = null,
         public ?string $googleEventId = null,
+        public ?string $googleCalendarId = null,
     ) {}
 
     public function handle(GoogleCalendarService $calendar): void
     {
         if ($this->action === 'delete') {
             if ($this->googleEventId) {
-                $calendar->deleteEventById($this->googleEventId);
+                // El calendario viaja con el job: al borrar, la reserva puede ya
+                // no existir y no habría cómo deducir a qué barbero pertenecía.
+                $calendar->deleteEventById($this->googleEventId, $this->googleCalendarId);
             }
 
             return;

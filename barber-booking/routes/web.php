@@ -8,11 +8,18 @@ use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\BarberController;
 
 Route::get('/', function () {
-    // Authenticated → dashboard; otherwise → Linktree de la barbería demo
     if (auth()->check()) {
         return redirect('/dashboard');
     }
-    return redirect()->route('public.shop.show', ['slug' => 'barberia-demo']);
+
+    // La barbería se busca en la base y no se escribe a mano: el slug había
+    // quedado fijo como 'barberia-demo', y al renombrar la barbería desde el
+    // panel la raíz del sitio empezó a redirigir a una página inexistente.
+    $barberia = \App\Models\BarberShop::where('is_active', true)->orderBy('id')->first();
+
+    return $barberia
+        ? redirect()->route('public.shop.show', ['slug' => $barberia->slug])
+        : abort(404, 'Todavía no hay ninguna barbería publicada.');
 });
 
 Route::get('/health', HealthController::class);
