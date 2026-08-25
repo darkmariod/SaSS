@@ -11,14 +11,14 @@
 # Credenciales por variables de entorno: este repositorio es público y una
 # contraseña escrita aquí quedaría publicada.
 #
-#   export DEPLOY_PASS='...'
+#   export DEPLOY_HOST='tu.servidor' DEPLOY_PASS='...'
 #   ./bin/deploy.sh
 #
 # Con clave SSH configurada (recomendado) no hace falta DEPLOY_PASS.
 
 set -euo pipefail
 
-DEPLOY_HOST="${DEPLOY_HOST:-108.174.152.179}"
+DEPLOY_HOST="${DEPLOY_HOST:?definí DEPLOY_HOST con la dirección del servidor}"
 DEPLOY_PORT="${DEPLOY_PORT:-22022}"
 DEPLOY_USER="${DEPLOY_USER:-root}"
 DEPLOY_PATH="${DEPLOY_PATH:-/var/www/barber-booking}"
@@ -67,6 +67,9 @@ paso 'Migraciones, permisos y caché'
     cd '$DEPLOY_PATH'
     chown -R www-data:www-data app routes config resources database/migrations database/seeders bin tests public/build
     sudo -u www-data php artisan migrate --force
+    # Sin permisos, el panel queda de solo lectura sin avisar: las tablas
+    # cargan pero se esconden los botones de crear, editar y borrar.
+    sudo -u www-data php artisan permissions:sync
     sudo -u www-data php artisan optimize:clear
     # opcache sirve el archivo viejo hasta revalidar: sin esto, un despliegue
     # puede parecer aplicado y no estarlo.

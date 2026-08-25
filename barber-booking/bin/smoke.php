@@ -10,7 +10,9 @@
  * Ningún test unitario los ve. Este script sí.
  *
  * Uso:
- *   php bin/smoke.php http://108.174.152.179:3000 owner@test.com dueno2026
+ *   php bin/smoke.php https://tu-servidor correo@ejemplo.com 'tu-clave'
+ *
+ * Nunca escribas credenciales reales en este archivo: el repositorio es público.
  *
  * Devuelve 0 si todo pasa, 1 si algo falla (sirve para CI o para un hook de
  * post-despliegue).
@@ -69,15 +71,15 @@ if ($codigo !== 200 || ! is_array($salud)) {
 titulo('Páginas públicas');
 
 // La dirección de la barbería NO se escribe a mano: se descubre siguiendo la
-// raíz del sitio. Cuando estaba fija, un cambio de nombre desde el panel la
+// ruta /demo. Cuando estaba fija, un cambio de nombre desde el panel la
 // dejó apuntando a una página que ya no existía y este chequeo no lo notaba.
-[$codigo, $cabeceras] = pedir("$base/", [], $jar);
+[$codigo, $cabeceras] = pedir("$base/demo", [], $jar);
 preg_match('/^Location:\s*(.+)$/mi', $cabeceras, $m);
 $publica = isset($m[1]) ? parse_url(trim($m[1]), PHP_URL_PATH) : null;
 
 if (! $publica) {
-    $fallos[] = 'la raíz del sitio no lleva a ninguna barbería';
-    printf("  [FALLA] %-40s HTTP %s (sin redirección)\n", '/', $codigo);
+    $fallos[] = '/demo no lleva a ninguna barbería';
+    printf("  [FALLA] %-40s HTTP %s (sin redirección)\n", '/demo', $codigo);
 } else {
     foreach ([$publica, $publica . '/reservar'] as $ruta) {
         [$codigo] = pedir("$base$ruta", [], $jar);
