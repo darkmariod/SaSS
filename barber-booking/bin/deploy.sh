@@ -19,7 +19,7 @@
 set -euo pipefail
 
 DEPLOY_HOST="${DEPLOY_HOST:?definí DEPLOY_HOST con la dirección del servidor}"
-DEPLOY_PORT="${DEPLOY_PORT:-22022}"
+DEPLOY_PORT="${DEPLOY_PORT:-22}"   # el puerto real se pasa por entorno
 DEPLOY_USER="${DEPLOY_USER:-root}"
 DEPLOY_PATH="${DEPLOY_PATH:-/var/www/barber-booking}"
 DEPLOY_URL="${DEPLOY_URL:-http://${DEPLOY_HOST}:3000}"

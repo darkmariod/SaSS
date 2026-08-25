@@ -86,7 +86,7 @@ DuckDNS te da un dominio `.duckdns.org` **GRATIS** para toda la vida.
 2. Vas a ver tu dominio creado
 3. Donde dice "current ip", poné la IP de tu VPS
    ┌───────────────────────┐
-   │ current ip: 203.0.113.5  ← la IP de tu servidor
+   │ current ip: TU.SERVIDOR.AQUI  ← la IP de tu servidor
    └───────────────────────┘
 4. Hacé clic en "update ip"
 ```
@@ -168,7 +168,7 @@ En la pestaña **Environment Variables** del proyecto, agregá TODO esto:
 ```bash
 APP_NAME=BookingEc
 APP_ENV=production
-APP_KEY=base64:aCAxnidrSaGpcEKd7GuPtwWIjlamdbHTn7qWoWVRtGU=
+APP_KEY=            # se genera con: php artisan key:generate
 APP_DEBUG=false
 APP_URL=https://barberia.duckdns.org
 
