@@ -9,12 +9,16 @@ class ExampleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_la_raiz_avisa_cuando_no_hay_ninguna_barberia(): void
+    public function test_la_raiz_muestra_la_pagina_de_venta(): void
     {
-        // Sin barberías publicadas la raíz no tiene a dónde llevar. Antes
-        // redirigía a un slug fijo y el visitante caía en un 404 sin
-        // explicación; ahora el 404 es explícito.
-        $this->get('/')->assertNotFound();
+        // La raíz vende el producto: quien escribe sólo la dirección es un
+        // dueño de barbería evaluando, no el cliente de una barbería.
+        $this->get('/')->assertOk();
+    }
+
+    public function test_demo_avisa_cuando_no_hay_ninguna_barberia(): void
+    {
+        $this->get('/demo')->assertNotFound();
     }
 
     public function test_health_endpoint_works(): void

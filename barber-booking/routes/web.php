@@ -7,20 +7,35 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\BarberController;
 
+// La raíz es la página de venta del producto: quien llega escribiendo sólo la
+// dirección es un dueño de barbería evaluando el sistema, no el cliente de una
+// barbería concreta. Los clientes entran por /barberia/{slug}, que es lo que
+// lleva el código QR.
 Route::get('/', function () {
     if (auth()->check()) {
         return redirect('/dashboard');
     }
 
-    // La barbería se busca en la base y no se escribe a mano: el slug había
-    // quedado fijo como 'barberia-demo', y al renombrar la barbería desde el
-    // panel la raíz del sitio empezó a redirigir a una página inexistente.
-    $barberia = \App\Models\BarberShop::where('is_active', true)->orderBy('id')->first();
+    $demo = \App\Models\BarberShop::where('is_active', true)->orderBy('id')->first();
 
-    return $barberia
-        ? redirect()->route('public.shop.show', ['slug' => $barberia->slug])
-        : abort(404, 'Todavía no hay ninguna barbería publicada.');
-});
+    return Inertia::render('Landing', [
+        'planes' => \App\Models\Plan::where('is_active', true)
+            ->orderBy('monthly_price')
+            ->get(['id', 'name', 'max_barbers', 'setup_price', 'monthly_price']),
+        'demoUrl' => $demo ? route('public.shop.show', ['slug' => $demo->slug]) : null,
+        'whatsapp' => config('billing.whatsapp'),
+    ]);
+})->name('landing');
+
+// Enlace estable a una barbería viva, para mostrarla a un comprador sin tener
+// que recordar el slug del momento.
+Route::get('/demo', function () {
+    $demo = \App\Models\BarberShop::where('is_active', true)->orderBy('id')->first();
+
+    abort_if(! $demo, 404, 'Todavía no hay ninguna barbería publicada.');
+
+    return redirect()->route('public.shop.show', ['slug' => $demo->slug]);
+})->name('demo');
 
 Route::get('/health', HealthController::class);
 

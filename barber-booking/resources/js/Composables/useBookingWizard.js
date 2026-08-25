@@ -67,6 +67,18 @@ export function useBookingWizard(props, preselectedBarber = null) {
             .sort((a, b) => Number(a.sort_order) - Number(b.sort_order));
     });
 
+    /**
+     * Cuando la barbería tiene un solo servicio principal, ese primer paso no
+     * decide nada: el cliente ve una categoría ("Mens Cut — el precio varía")
+     * en lugar de los cortes con precio que acaba de leer en la carta. Se
+     * selecciona solo para que entre directo a elegir el corte.
+     */
+    if (props.services.filter((s) => s.service_type === "main").length === 1) {
+        selectedMainService.value = props.services.find(
+            (s) => s.service_type === "main",
+        );
+    }
+
     const bookableService = computed(() => {
         if (selectedServiceOption.value) return selectedServiceOption.value;
         if (selectedMainService.value && serviceOptions.value.length === 0) return selectedMainService.value;
