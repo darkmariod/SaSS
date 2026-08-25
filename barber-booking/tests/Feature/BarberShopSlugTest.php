@@ -81,15 +81,37 @@ class BarberShopSlugTest extends TestCase
     }
 
 
-    public function test_la_raiz_del_sitio_lleva_a_una_barberia_que_existe(): void
+
+    public function test_una_direccion_vieja_sigue_llevando_a_la_barberia(): void
     {
-        // La raíz tenía el slug escrito a mano ('barberia-demo'). Al renombrar
-        // la barbería quedó redirigiendo a una página inexistente: quien
-        // escribía sólo la dirección del servidor veía un 404.
+        // Un QR impreso no se puede reimprimir cada vez que el dueño renombra su
+        // barbería. La dirección anterior tiene que seguir funcionando.
+        $barberia = $this->barberia();
+        $viejo = $barberia->slug;
+
+        $barberia->update(['name' => 'Seven Barber', 'slug' => 'seven-barber']);
+
+        $this->assertNotSame($viejo, $barberia->fresh()->slug);
+        $this->get("/barberia/{$viejo}")->assertOk();
+        $this->get("/barberia/{$viejo}/reservar")->assertOk();
+    }
+
+    public function test_una_direccion_que_nunca_existio_sigue_dando_404(): void
+    {
+        $this->barberia();
+
+        $this->get('/barberia/esta-no-existe')->assertNotFound();
+    }
+
+    public function test_demo_lleva_a_una_barberia_que_existe(): void
+    {
+        // /demo es el enlace que se le pasa a un comprador. Antes esta lógica
+        // vivía en la raíz con el slug escrito a mano y, al renombrar la
+        // barbería, llevaba a una página inexistente.
         $barberia = $this->barberia();
         $barberia->update(['name' => 'Seven Barber', 'slug' => 'Seven Barber ']);
 
-        $destino = $this->get('/')->assertRedirect()->headers->get('Location');
+        $destino = $this->get('/demo')->assertRedirect()->headers->get('Location');
 
         $this->get($destino)->assertOk();
         $this->assertStringContainsString($barberia->fresh()->slug, $destino);

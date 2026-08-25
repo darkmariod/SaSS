@@ -23,10 +23,7 @@ class PublicBookingController extends Controller
 {
     public function show(string $slug, Request $request): Response
     {
-        $shop = BarberShop::query()
-            ->where('slug', $slug)
-            ->where('is_active', true)
-            ->firstOrFail();
+        $shop = $this->barberiaPorSlug($slug);
 
         $services = $shop->services()
             ->where('is_active', true)
@@ -57,10 +54,7 @@ class PublicBookingController extends Controller
 
     public function shop(string $slug, Request $request): Response
     {
-        $shop = BarberShop::query()
-            ->where('slug', $slug)
-            ->where('is_active', true)
-            ->firstOrFail();
+        $shop = $this->barberiaPorSlug($slug);
 
         $services = $shop->services()
             ->where('is_active', true)
@@ -87,6 +81,23 @@ class PublicBookingController extends Controller
             'barbers' => $barbers,
             'preselectedBarber' => $preselectedBarber,
         ]);
+    }
+
+
+    /**
+     * Resuelve la barbería aceptando también direcciones antiguas.
+     *
+     * Un código QR impreso no se puede reimprimir cada vez que el dueño renombra
+     * su barbería, así que las direcciones que alguna vez existieron siguen
+     * llevando al lugar correcto.
+     */
+    private function barberiaPorSlug(string $slug): BarberShop
+    {
+        $barberia = BarberShop::porSlugHistorico($slug);
+
+        abort_if(! $barberia || ! $barberia->is_active, 404);
+
+        return $barberia;
     }
 
     public function availability(Request $request): JsonResponse

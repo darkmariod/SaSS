@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class BarberShop extends Model
@@ -48,6 +49,42 @@ class BarberShop extends Model
      * reservar. Normalizar en el modelo cubre todas las vías de escritura, no
      * sólo el formulario donde apareció el problema.
      */
+
+    protected static function booted(): void
+    {
+        // Al cambiar la dirección pública se conserva la anterior, para que un
+        // código QR ya impreso siga funcionando en lugar de caer en un 404.
+        static::updating(function (self $barberia): void {
+            $anterior = $barberia->getOriginal('slug');
+
+            if (! $anterior || $anterior === $barberia->slug) {
+                return;
+            }
+
+            DB::table('barber_shop_slug_history')->updateOrInsert(
+                ['slug' => $anterior],
+                ['barber_shop_id' => $barberia->id, 'created_at' => now()],
+            );
+        });
+    }
+
+    /**
+     * Busca una barbería por su dirección actual o por cualquiera que haya
+     * usado antes. Devuelve null si esa dirección nunca existió.
+     */
+    public static function porSlugHistorico(string $slug): ?self
+    {
+        $actual = static::where('slug', $slug)->first();
+
+        if ($actual) {
+            return $actual;
+        }
+
+        $id = DB::table('barber_shop_slug_history')->where('slug', $slug)->value('barber_shop_id');
+
+        return $id ? static::find($id) : null;
+    }
+
     public function setSlugAttribute(?string $valor): void
     {
         $limpio = Str::slug((string) $valor);
