@@ -44,12 +44,15 @@ class ServicioSimpleTest extends TestCase
         $this->assertSame('main', Service::find($servicio->parent_service_id)->service_type);
     }
 
-    public function test_el_cliente_ve_el_servicio_nuevo_en_la_carta(): void
+    public function test_el_servicio_nuevo_queda_realmente_reservable(): void
     {
-        // Lo que importa no es el dato, sino que el corte aparezca para reservar.
+        // No alcanza con buscar el nombre en el HTML de la página pública:
+        // Inertia serializa todas las props ahí, así que el texto aparece
+        // aunque la vista no lo dibuje y aunque el servicio no fuera
+        // reservable. La prueba honesta es pedir horarios para él.
         $barberia = $this->barberia();
 
-        Service::create([
+        $servicio = Service::create([
             'barber_shop_id' => $barberia->id,
             'name' => 'Corte Navaja',
             'category' => 'Hombre',
@@ -60,9 +63,19 @@ class ServicioSimpleTest extends TestCase
             'sort_order' => 9,
         ]);
 
-        $this->get("/barberia/{$barberia->slug}")
-            ->assertOk()
-            ->assertSee('Corte Navaja');
+        $barbero = $barberia->barbers()->first();
+
+        $respuesta = $this->postJson('/barberia/availability/check', [
+            'service_id' => $servicio->id,
+            'barber_profile_id' => $barbero->id,
+            'date' => now()->addDays(2)->toDateString(),
+        ]);
+
+        $respuesta->assertOk();
+        $this->assertNotEmpty(
+            $respuesta->json('slots'),
+            'Un servicio recién creado tiene que devolver horarios disponibles.',
+        );
     }
 
     public function test_un_extra_no_se_cuelga_de_nadie(): void
