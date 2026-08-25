@@ -28,6 +28,10 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    preselectedService: {
+        type: Object,
+        default: null,
+    },
 });
 
 const wizard = useBookingWizard(props, props.preselectedBarber);

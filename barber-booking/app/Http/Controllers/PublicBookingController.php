@@ -44,11 +44,19 @@ class PublicBookingController extends Controller
             $preselectedBarber = $barbers->firstWhere('id', (int) $request->b);
         }
 
+        // ?s=service_id → entrar directo a un servicio, para compartir en redes
+        // el enlace de un corte concreto sin que el cliente tenga que buscarlo.
+        $preselectedService = null;
+        if ($request->has('s')) {
+            $preselectedService = $services->firstWhere('id', (int) $request->s);
+        }
+
         return Inertia::render('PublicBooking/Shop', [
             'shop' => $shop,
             'services' => $services,
             'barbers' => $barbers,
             'preselectedBarber' => $preselectedBarber,
+            'preselectedService' => $preselectedService,
         ]);
     }
 

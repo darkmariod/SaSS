@@ -79,6 +79,53 @@ export function useBookingWizard(props, preselectedBarber = null) {
         );
     }
 
+    /**
+     * Los servicios tal como los entiende el cliente: una lista plana de cosas
+     * que puede reservar, con su precio.
+     *
+     * Por debajo existe una jerarquía (un servicio "principal" que agrupa
+     * opciones), pero eso es organización interna. Mostrarla obligaba al
+     * cliente a tocar una categoría llamada "Mens Cut — el precio varía" para
+     * recién ver los cortes con precio que ya había leído en la carta.
+     */
+    const bookableServices = computed(() => {
+        const opciones = props.services.filter((s) => s.service_type === "option");
+        const idsConHijos = new Set(opciones.map((s) => Number(s.parent_service_id)));
+
+        // Un servicio principal sin opciones se reserva tal cual.
+        const principalesSueltos = props.services.filter(
+            (s) => s.service_type === "main" && !idsConHijos.has(Number(s.id)),
+        );
+
+        return [...opciones, ...principalesSueltos].sort(
+            (a, b) => Number(a.sort_order) - Number(b.sort_order),
+        );
+    });
+
+    /**
+     * Selecciona un servicio de la lista plana resolviendo por detrás a qué
+     * principal pertenece.
+     */
+    const selectBookable = (service) => {
+        if (service.service_type === "option") {
+            selectedMainService.value =
+                props.services.find(
+                    (s) => Number(s.id) === Number(service.parent_service_id),
+                ) ?? selectedMainService.value;
+            selectedServiceOption.value = service;
+        } else {
+            selectedMainService.value = service;
+            selectedServiceOption.value = null;
+        }
+
+        clearStaff();
+        clearSchedule();
+        clearReceipt();
+
+        errorMessage.value = "";
+        successMessage.value = "";
+    };
+
     const bookableService = computed(() => {
         if (selectedServiceOption.value) return selectedServiceOption.value;
         if (selectedMainService.value && serviceOptions.value.length === 0) return selectedMainService.value;
@@ -496,6 +543,13 @@ export function useBookingWizard(props, preselectedBarber = null) {
         };
     };
 
+    // ?s=service_id → el enlace llega con el servicio ya elegido. Va acá abajo
+    // porque selectBookable se define más arriba pero después de la
+    // autoselección del principal.
+    if (props.preselectedService) {
+        selectBookable(props.preselectedService);
+    }
+
     const formatDate = (date) => {
         if (!date) {
             return "Sin seleccionar";
@@ -563,6 +617,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
 
         mainServices,
         serviceOptions,
+        bookableServices,
         addons,
         bookableService,
         total,
@@ -578,6 +633,7 @@ export function useBookingWizard(props, preselectedBarber = null) {
 
         selectMainService,
         selectServiceOption,
+        selectBookable,
         toggleAddon,
         selectAnyStaff,
         selectBarber,
