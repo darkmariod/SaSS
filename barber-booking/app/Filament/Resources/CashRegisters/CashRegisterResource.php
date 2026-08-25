@@ -167,42 +167,44 @@ class CashRegisterResource extends Resource
                     ]),
 
                 Section::make('Totales del sistema')
-                    ->description('Estos valores se recalculan con reservas pagadas, transferencias confirmadas y movimientos manuales.')
+                    ->description('Se calcula solo con las reservas cobradas, las transferencias confirmadas y los movimientos que cargues.')
                     ->schema([
                         Grid::make(3)
                             ->schema([
                                 TextInput::make('cash_income_amount')
-                                    ->label('Efectivo sistema')
+                                    ->label('Cobrado en efectivo')
                                     ->prefix('$')
                                     ->disabled()
                                     ->dehydrated(false),
 
                                 TextInput::make('transfer_income_amount')
-                                    ->label('Transferencias')
+                                    ->label('Cobrado por transferencia')
+                                    ->helperText('Va al banco, no al cajón.')
                                     ->prefix('$')
                                     ->disabled()
                                     ->dehydrated(false),
 
                                 TextInput::make('manual_income_amount')
-                                    ->label('Ingresos manuales')
+                                    ->label('Otros ingresos')
                                     ->prefix('$')
                                     ->disabled()
                                     ->dehydrated(false),
 
                                 TextInput::make('expense_amount')
-                                    ->label('Egresos')
+                                    ->label('Gastos')
                                     ->prefix('$')
                                     ->disabled()
                                     ->dehydrated(false),
 
                                 TextInput::make('system_amount')
-                                    ->label('Total sistema')
+                                    ->label('Debe haber en el cajón')
+                                    ->helperText('Apertura + efectivo + otros ingresos − gastos.')
                                     ->prefix('$')
                                     ->disabled()
                                     ->dehydrated(false),
 
                                 TextInput::make('difference_amount')
-                                    ->label('Diferencia')
+                                    ->label('Sobra o falta')
                                     ->prefix('$')
                                     ->disabled()
                                     ->dehydrated(false),
@@ -243,28 +245,28 @@ class CashRegisterResource extends Resource
                     ->sortable(),
 
                 TextColumn::make('manual_income_amount')
-                    ->label('Ingresos')
+                    ->label('Otros')
                     ->money('USD')
                     ->sortable(),
 
                 TextColumn::make('expense_amount')
-                    ->label('Egresos')
+                    ->label('Gastos')
                     ->money('USD')
                     ->sortable(),
 
                 TextColumn::make('system_amount')
-                    ->label('Sistema')
+                    ->label('Debe haber')
                     ->money('USD')
                     ->sortable(),
 
                 TextColumn::make('real_amount')
-                    ->label('Real')
+                    ->label('Contado')
                     ->money('USD')
                     ->placeholder('—')
                     ->sortable(),
 
                 TextColumn::make('difference_amount')
-                    ->label('Diferencia')
+                    ->label('Sobra / falta')
                     ->money('USD')
                     ->sortable()
                     ->color(fn ($state): string => (float) $state === 0.0 ? 'success' : 'danger'),
@@ -319,7 +321,8 @@ class CashRegisterResource extends Resource
                     ->requiresConfirmation()
                     ->schema([
                         TextInput::make('real_amount')
-                            ->label('Monto real contado')
+                            ->label('¿Cuánto contaste en el cajón?')
+                            ->helperText('Solo el efectivo. Las transferencias no van acá: ese dinero está en el banco.')
                             ->numeric()
                             ->prefix('$')
                             ->minValue(0)

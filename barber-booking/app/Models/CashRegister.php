@@ -101,9 +101,13 @@ class CashRegister extends Model
             ->whereNull('transfer_id')
             ->sum('total_amount'), 2);
 
+        // Lo que DEBE haber en el cajón. Las transferencias quedan fuera a
+        // propósito: ese dinero entra al banco, no a la caja física. Sumarlas
+        // aquí hacía que cada transferencia generara un faltante fantasma por
+        // su monto exacto, y el dueño veía que "falta plata" con la caja
+        // perfectamente cuadrada.
         $systemAmount = round((float) $this->opening_amount
             + $cashIncome
-            + $transferIncome
             + $manualIncome
             - $expenses, 2);
 
