@@ -8,6 +8,7 @@ use App\Filament\Resources\CashMovements\Pages\ListCashMovements;
 use App\Models\CashMovement;
 use App\Models\CashRegister;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -203,6 +204,8 @@ class CashMovementResource extends Resource
                     ]),
             ])
             ->recordActions([
+                DeleteAction::make()
+                    ->label('Eliminar'),
                 EditAction::make()
                     ->label('Editar'),
             ])

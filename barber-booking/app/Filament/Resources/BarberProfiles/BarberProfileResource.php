@@ -9,6 +9,7 @@ use App\Models\BarberProfile;
 use App\Models\BarberShop;
 use App\Models\User;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -205,6 +206,8 @@ class BarberProfileResource extends Resource
                     ->boolean(),
             ])
             ->recordActions([
+                DeleteAction::make()
+                    ->label('Eliminar'),
                 EditAction::make()
                     ->label('Editar'),
             ])

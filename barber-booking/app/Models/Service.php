@@ -29,6 +29,38 @@ class Service extends Model
         'sort_order' => 'integer',
     ];
 
+
+    protected static function booted(): void
+    {
+        // El dueño solo carga nombre, precio y duración. La jerarquía interna
+        // (un servicio "principal" que agrupa las opciones reservables) se
+        // resuelve sola: pedírsela en el formulario obligaba a entender un
+        // concepto del modelo de datos que no le dice nada a un barbero.
+        static::saving(function (self $servicio): void {
+            if ($servicio->service_type !== 'option' || $servicio->parent_service_id) {
+                return;
+            }
+
+            $principal = static::where('barber_shop_id', $servicio->barber_shop_id)
+                ->where('service_type', 'main')
+                ->orderBy('id')
+                ->first();
+
+            $principal ??= static::withoutEvents(fn () => static::create([
+                'barber_shop_id' => $servicio->barber_shop_id,
+                'name' => 'Servicios',
+                'category' => $servicio->category ?: 'General',
+                'service_type' => 'main',
+                'duration_minutes' => 15,
+                'price' => 0,
+                'is_active' => true,
+                'sort_order' => 0,
+            ]));
+
+            $servicio->parent_service_id = $principal->id;
+        });
+    }
+
     public function barberShop(): BelongsTo
     {
         return $this->belongsTo(BarberShop::class);

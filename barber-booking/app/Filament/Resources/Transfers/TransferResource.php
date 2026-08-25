@@ -9,6 +9,8 @@ use App\Models\Transfer;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
@@ -280,6 +282,10 @@ class TransferResource extends Resource
             ->recordActions([
                 ViewAction::make()
                     ->label('Ver'),
+                EditAction::make()
+                    ->label('Editar'),
+                DeleteAction::make()
+                    ->label('Eliminar'),
 
                 Action::make('openReceipt')
                     ->label('Ver comprobante')

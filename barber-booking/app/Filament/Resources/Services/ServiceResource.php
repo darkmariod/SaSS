@@ -8,6 +8,7 @@ use App\Filament\Resources\Services\Pages\ListServices;
 use App\Models\BarberShop;
 use App\Models\Service;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
@@ -121,39 +122,15 @@ class ServiceResource extends Resource
                                     ->preload(),
 
                                 Select::make('service_type')
-                                    ->label('Tipo de servicio')
+                                    ->label('¿Qué es?')
                                     ->options([
-                                        'main' => 'Servicio principal',
-                                        'option' => 'Opción reservable',
-                                        'addon' => 'Extra / adicional',
+                                        'option' => 'Un servicio que el cliente reserva',
+                                        'addon' => 'Un extra que se suma a un corte',
                                     ])
+                                    ->default('option')
+                                    ->helperText('Un corte se reserva. Las cejas o la barba suelta son extras.')
                                     ->required()
                                     ->live(),
-
-                                Select::make('parent_service_id')
-                                    ->label('Servicio padre')
-                                    ->helperText('Úsalo solo cuando el tipo sea opción reservable.')
-                                    ->options(function (): array {
-                                        $user = auth()->user();
-
-                                        $query = Service::query()
-                                            ->where('service_type', 'main')
-                                            ->where('is_active', true);
-
-                                        if ($user?->hasRole('owner')) {
-                                            $query->whereHas('barberShop', function (Builder $builder) use ($user) {
-                                                $builder->where('owner_id', $user->id);
-                                            });
-                                        }
-
-                                        return $query
-                                            ->orderBy('name')
-                                            ->pluck('name', 'id')
-                                            ->toArray();
-                                    })
-                                    ->searchable()
-                                    ->preload()
-                                    ->nullable(),
 
                                 TextInput::make('category')
                                     ->label('Categoría')
@@ -282,6 +259,8 @@ class ServiceResource extends Resource
                     }),
             ])
             ->recordActions([
+                DeleteAction::make()
+                    ->label('Eliminar'),
                 EditAction::make()
                     ->label('Editar'),
             ])

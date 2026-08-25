@@ -10,6 +10,7 @@ use App\Models\BarberProfile;
 use App\Models\BarberShop;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -335,6 +336,8 @@ class BarberPaymentResource extends Resource
                     ]),
             ])
             ->recordActions([
+                DeleteAction::make()
+                    ->label('Eliminar'),
                 EditAction::make()
                     ->label('Editar'),
 

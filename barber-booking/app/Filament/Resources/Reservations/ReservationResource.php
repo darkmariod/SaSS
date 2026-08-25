@@ -11,6 +11,8 @@ use App\Models\Reservation;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -292,6 +294,10 @@ class ReservationResource extends Resource
             ->recordActions([
                 ViewAction::make()
                     ->label('Ver'),
+                EditAction::make()
+                    ->label('Editar'),
+                DeleteAction::make()
+                    ->label('Eliminar'),
                 Action::make('approvePayment')
                     ->label('Aprobar pago')
                     ->icon('heroicon-o-check-circle')

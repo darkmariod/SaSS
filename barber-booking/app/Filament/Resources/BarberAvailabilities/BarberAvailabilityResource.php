@@ -8,6 +8,7 @@ use App\Filament\Resources\BarberAvailabilities\Pages\ListBarberAvailabilities;
 use App\Models\BarberAvailability;
 use App\Models\BarberProfile;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -209,6 +210,8 @@ class BarberAvailabilityResource extends Resource
                     ]),
             ])
             ->recordActions([
+                DeleteAction::make()
+                    ->label('Eliminar'),
                 EditAction::make()
                     ->label('Editar'),
             ])

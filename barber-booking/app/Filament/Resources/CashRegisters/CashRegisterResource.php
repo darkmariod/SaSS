@@ -9,6 +9,7 @@ use App\Models\BarberShop;
 use App\Models\CashRegister;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -302,6 +303,11 @@ class CashRegisterResource extends Resource
                     ]),
             ])
             ->recordActions([
+                DeleteAction::make()
+                    ->label('Eliminar')
+                    // Una caja cerrada es el registro contable del día:
+                    // solo se puede eliminar mientras siga abierta.
+                    ->visible(fn ($record): bool => $record->status !== 'closed'),
                 EditAction::make()
                     ->label('Editar'),
 
