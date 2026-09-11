@@ -68,7 +68,9 @@ class ServicioSimpleTest extends TestCase
         $respuesta = $this->postJson('/barberia/availability/check', [
             'service_id' => $servicio->id,
             'barber_profile_id' => $barbero->id,
-            'date' => now()->addDays(2)->toDateString(),
+            // Siempre el próximo lunes: el barbero recién creado atiende de lunes
+            // a sábado, y "dentro de dos días" caía en domingo los viernes.
+            'date' => now()->next(\Carbon\Carbon::MONDAY)->toDateString(),
         ]);
 
         $respuesta->assertOk();

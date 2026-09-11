@@ -17,6 +17,7 @@ class Reservation extends Model
         'barber_payment_id',
         'google_event_id',
         'google_calendar_id',
+        'reminder_sent_at',
         'upload_token',
         'user_id',
         'consultant_id',
@@ -34,6 +35,7 @@ class Reservation extends Model
 
     protected $casts = [
         'reservation_date' => 'date',
+        'reminder_sent_at' => 'datetime',
         'total_amount' => 'decimal:2',
     ];
 
